@@ -277,6 +277,87 @@ class DehardcodingTests(unittest.TestCase):
         self.assertIsNotNone(row[1])
         self.assertLess(float(row[2]), 1.0)
 
+    def test_public_radius_query_returns_generated_network_node(self):
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                  f.facility_id,l.network_facility_id,
+                  ST_X(f.geom::geometry),ST_Y(f.geom::geometry)
+                FROM facilities f
+                JOIN facility_network_links l
+                  ON l.facility_id=f.facility_id
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM product_facilities pf
+                    WHERE pf.facility_id=f.facility_id
+                      AND pf.sku LIKE 'DTSKU-%'
+                  )
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+        self.assertIsNotNone(row)
+        facility_id, network_id, lon, lat = row
+        public_rows = facilities_within_radius(
+            latitude=float(lat),
+            longitude=float(lon),
+            radius_km=3,
+        )
+        public_ids = {item["network_facility_id"] for item in public_rows}
+        self.assertIn(
+            network_id,
+            public_ids,
+            f"Expected public node {network_id}; nearby nodes={sorted(public_ids)}",
+        )
+
+    def test_public_radius_query_preserves_generated_operational_link(self):
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                  f.facility_id,l.network_facility_id,
+                  ST_X(f.geom::geometry),ST_Y(f.geom::geometry)
+                FROM facilities f
+                JOIN facility_network_links l
+                  ON l.facility_id=f.facility_id
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM product_facilities pf
+                    WHERE pf.facility_id=f.facility_id
+                      AND pf.sku LIKE 'DTSKU-%'
+                  )
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+        self.assertIsNotNone(row)
+        facility_id, network_id, lon, lat = row
+        public_rows = facilities_within_radius(
+            latitude=float(lat),
+            longitude=float(lon),
+            radius_km=3,
+        )
+        target = next(
+            (
+                item
+                for item in public_rows
+                if item["network_facility_id"] == network_id
+            ),
+            None,
+        )
+        self.assertIsNotNone(target)
+        self.assertIn(
+            facility_id,
+            target["operational_facility_ids"],
+            (
+                f"Expected operational link {facility_id}; got "
+                f"{target['operational_facility_ids']}"
+            ),
+        )
+
     def test_arbitrary_new_event_finds_generated_facility_geospatially(self):
         event_id = "TEST-ARBITRARY-SCALE-GEO"
         fixture = self._insert_scale_earthquake(event_id)

@@ -119,6 +119,12 @@ jobs:
       - name: Generalization - generated facility public-network link
         run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_generated_facility_has_public_network_link -v
 
+      - name: Generalization - public radius returns generated node
+        run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_public_radius_query_returns_generated_network_node -v
+
+      - name: Generalization - public radius preserves operational link
+        run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_public_radius_query_preserves_generated_operational_link -v
+
       - name: Generalization - generated facility geospatial lookup
         run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_arbitrary_new_event_finds_generated_facility_geospatially -v
 

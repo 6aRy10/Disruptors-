@@ -44,6 +44,9 @@ jobs:
       - name: Test Aiven free-tier safety preflight
         run: python -m unittest tests.test_aiven_preflight -v
 
+      - name: Test single-command team data readiness report
+        run: python -m unittest tests.test_team_status -v
+
       - name: Test database readiness diagnostics
         run: python -m unittest tests.test_doctor -v
 

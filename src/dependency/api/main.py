@@ -11,6 +11,14 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
+from dependency.services.demo_reset import reset_demo_state
+from dependency.services.state_updates import (
+    update_facility_state,
+    update_inventory,
+    update_purchase_order_eta,
+    update_setup_lead_time,
+    update_substitution_approval,
+)
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.candidates import generate_recovery_candidates
@@ -51,6 +59,51 @@ class AgentIncidentRequest(BaseModel):
     persist: bool = True
 
 
+class InventoryUpdate(BaseModel):
+    site_id: str
+    item_type: str
+    item_id: str
+    qty_on_hand: float = Field(ge=0)
+    qty_reserved: float = Field(ge=0)
+    safety_stock: float = Field(ge=0)
+    scenario_id: str | None = None
+    sku: str | None = None
+
+
+class LeadTimeUpdate(BaseModel):
+    sku: str
+    facility_id: str
+    setup_lead_days: int = Field(ge=0)
+    scenario_id: str | None = None
+
+
+class PurchaseOrderEtaUpdate(BaseModel):
+    po_id: str
+    eta: str
+    scenario_id: str | None = None
+    sku: str | None = None
+
+
+class FacilityStateUpdate(BaseModel):
+    scenario_id: str
+    facility_id: str
+    status: str
+    capacity_multiplier: float = Field(ge=0, le=1)
+    confirmed: bool = True
+    source_type: str = "JUDGE_EDIT"
+    reason: str = "Judge changed facility state."
+    sku: str | None = None
+
+
+class SubstitutionApprovalUpdate(BaseModel):
+    material_id: str
+    substitute_material_id: str
+    approved: bool
+    engineering_status: str
+    scenario_id: str | None = None
+    sku: str | None = None
+
+
 class CapacityConfirmation(BaseModel):
     facility_id: str
     sku: str
@@ -60,6 +113,26 @@ class CapacityConfirmation(BaseModel):
     raw_message: str | None = None
     scenario_id: str | None = None
     release_safety_stock: bool = False
+
+
+def _update_with_optional_replan(
+    update: dict,
+    *,
+    scenario_id: str | None,
+    sku: str | None,
+):
+    response = {"update": update}
+    if scenario_id and sku:
+        response["replan"] = plan_sku_recovery(
+            scenario_id=scenario_id,
+            sku=sku,
+            release_safety_stock=False,
+        )
+        response["risk"] = scenario_product_risk(
+            scenario_id=scenario_id,
+            sku=sku,
+        )
+    return response
 
 
 @app.get("/health")
@@ -199,6 +272,103 @@ def supplier_capacity_confirm(body: CapacityConfirmation):
             release_safety_stock=body.release_safety_stock,
         )
     return response
+
+
+@app.post("/demo/reset")
+def demo_reset():
+    return reset_demo_state()
+
+
+@app.post("/state/inventory")
+def state_inventory(body: InventoryUpdate):
+    try:
+        update = update_inventory(
+            site_id=body.site_id,
+            item_type=body.item_type,
+            item_id=body.item_id,
+            qty_on_hand=body.qty_on_hand,
+            qty_reserved=body.qty_reserved,
+            safety_stock=body.safety_stock,
+        )
+        return _update_with_optional_replan(
+            update,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/state/lead-time")
+def state_lead_time(body: LeadTimeUpdate):
+    try:
+        update = update_setup_lead_time(
+            sku=body.sku,
+            facility_id=body.facility_id,
+            setup_lead_days=body.setup_lead_days,
+        )
+        return _update_with_optional_replan(
+            update,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/state/purchase-order-eta")
+def state_purchase_order_eta(body: PurchaseOrderEtaUpdate):
+    try:
+        update = update_purchase_order_eta(
+            po_id=body.po_id,
+            eta=body.eta,
+        )
+        return _update_with_optional_replan(
+            update,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/state/facility")
+def state_facility(body: FacilityStateUpdate):
+    try:
+        update = update_facility_state(
+            scenario_id=body.scenario_id,
+            facility_id=body.facility_id,
+            status=body.status,
+            capacity_multiplier=body.capacity_multiplier,
+            confirmed=body.confirmed,
+            source_type=body.source_type,
+            reason=body.reason,
+        )
+        return _update_with_optional_replan(
+            update,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/state/substitution")
+def state_substitution(body: SubstitutionApprovalUpdate):
+    try:
+        update = update_substitution_approval(
+            material_id=body.material_id,
+            substitute_material_id=body.substitute_material_id,
+            approved=body.approved,
+            engineering_status=body.engineering_status,
+        )
+        return _update_with_optional_replan(
+            update,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/agents/run-incident")

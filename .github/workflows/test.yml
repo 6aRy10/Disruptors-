@@ -64,3 +64,6 @@ jobs:
 
       - name: Test agent contracts
         run: python -m unittest tests.test_agents -v
+
+      - name: Test operational memory
+        run: python -m unittest tests.test_memory -v

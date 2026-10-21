@@ -328,6 +328,80 @@ CREATE TABLE IF NOT EXISTS scenario_facility_state (
   PRIMARY KEY(scenario_id, facility_id)
 );
 
+CREATE TABLE IF NOT EXISTS incidents (
+  incident_id text PRIMARY KEY,
+  event_id text REFERENCES external_events(event_id),
+  scenario_id text REFERENCES scenarios(scenario_id),
+  event_type text,
+  status text NOT NULL,
+  summary text,
+  initial_assessment text,
+  detected_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  provenance_class text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS incident_evidence (
+  evidence_id text PRIMARY KEY,
+  incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  evidence_type text NOT NULL,
+  source_name text,
+  source_url text,
+  fact_json jsonb NOT NULL,
+  confidence numeric CHECK (confidence BETWEEN 0 AND 100),
+  observed_at timestamptz NOT NULL DEFAULT now(),
+  provenance_class text NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS incident_plan_history (
+  plan_record_id text PRIMARY KEY,
+  incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  state_version bigint NOT NULL,
+  sku text,
+  plan_id text,
+  decision text NOT NULL,
+  reasons jsonb,
+  metrics jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS incident_decisions (
+  decision_id text PRIMARY KEY,
+  incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  plan_record_id text REFERENCES incident_plan_history(plan_record_id),
+  action text NOT NULL,
+  approved_by text,
+  reason text,
+  made_at timestamptz NOT NULL DEFAULT now(),
+  outcome_json jsonb
+);
+
+CREATE TABLE IF NOT EXISTS incident_outcomes (
+  incident_id text PRIMARY KEY REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  actual_supplier_delay_days numeric,
+  actual_shortage_units numeric,
+  actual_cost_eur numeric,
+  customer_impact_json jsonb,
+  success boolean,
+  lesson text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS agent_runs (
+  run_id text PRIMARY KEY,
+  incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  agent_name text NOT NULL,
+  model text,
+  output_text text,
+  tool_trace jsonb,
+  state_version bigint,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS incidents_event_idx ON incidents(event_id);
+CREATE INDEX IF NOT EXISTS incidents_event_type_idx ON incidents(event_type);
+CREATE INDEX IF NOT EXISTS agent_runs_incident_idx ON agent_runs(incident_id);
+
 CREATE TABLE IF NOT EXISTS operational_state_version (
   singleton boolean PRIMARY KEY DEFAULT true CHECK(singleton),
   version bigint NOT NULL

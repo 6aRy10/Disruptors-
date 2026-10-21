@@ -1,15 +1,6 @@
 {
-  "incidents": [
-    {
-      "incident_id": "INC-DEMO-001",
-      "event_id": "EVT-EQ-IDN-2022",
-      "summary": "West Java earthquake replay; two assembly sites later confirmed unavailable in demo private state.",
-      "initial_product_risk": 57,
-      "supplier_confirmation_request": "REQ-CAP-001",
-      "confirmed_capacity": 5500,
-      "revised_product_risk": 78,
-      "chosen_plan": "Protect priority-1 Europe commitment, allocate remaining capacity by margin, communicate 3,900-unit shortfall.",
-      "lesson": "Do not trust stale backup capacity. Ask the last viable supplier for structured confirmation before calling a recovery plan feasible."
-    }
-  ]
+  "schema_version": 2,
+  "status": "DEPRECATED_FILE_FIXTURE",
+  "note": "Operational incident memory now lives in PostgreSQL: incidents, incident_evidence, incident_plan_history, incident_decisions, incident_outcomes, and agent_runs. Do not use this JSON file as current operational truth.",
+  "incidents": []
 }

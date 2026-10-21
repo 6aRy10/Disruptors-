@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from dependency.db.connection import connect, postgis_version
+from dependency.agents.orchestrator import run_incident_agents
+from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
@@ -38,6 +40,15 @@ app.add_middleware(
 
 class SupplierReply(BaseModel):
     text: str
+
+
+class AgentIncidentRequest(BaseModel):
+    event_id: str
+    scenario_id: str
+    sku: str
+    radius_km: float = Field(default=150.0, gt=0, le=1000)
+    model: str | None = None
+    persist: bool = True
 
 
 class CapacityConfirmation(BaseModel):
@@ -188,6 +199,40 @@ def supplier_capacity_confirm(body: CapacityConfirmation):
             release_safety_stock=body.release_safety_stock,
         )
     return response
+
+
+@app.post("/agents/run-incident")
+def agents_run_incident(body: AgentIncidentRequest):
+    try:
+        return run_incident_agents(
+            event_id=body.event_id,
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+            radius_km=body.radius_km,
+            model=body.model,
+            persist=body.persist,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/incidents/{incident_id}")
+def incident_memory(incident_id: str):
+    try:
+        return get_incident_memory(incident_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/memory/similar/{event_type}")
+def memory_similar(event_type: str, limit: int = Query(default=5, ge=1, le=50)):
+    return {
+        "event_type": event_type,
+        "usage_rule": "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
+        "incidents": similar_incidents(event_type=event_type, limit=limit),
+    }
 
 
 @app.get("/demo/tariff")

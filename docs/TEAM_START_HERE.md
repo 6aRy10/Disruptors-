@@ -130,3 +130,18 @@ PortWatch reports public observations. A decline relative to a computed
 baseline is `PUBLIC_DERIVED`, not verified physical port closure. Exposure
 uses explicit private transport lanes. An observed decline must not directly
 close a transport lane or claim a confirmed late delivery.
+
+## Third external signal: PortWatch
+
+The existing IMF PortWatch adapter can be enabled in the same local runner:
+
+```powershell
+python -m scripts.run_live_stack --portwatch
+python -m scripts.run_live_stack --watch --portwatch
+```
+
+Only 3 modeled ports are checked per PortWatch pass by default; batches rotate
+hourly. This avoids an unbounded number of external requests during demos. Port
+lookup conflicts and provider errors are reported. PortWatch is a derived
+traffic-anomaly signal, never a verified port closure. Old activity records do
+not create new live incidents. Cianjur remains the sole flagship demo.

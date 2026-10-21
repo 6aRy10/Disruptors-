@@ -15,6 +15,7 @@ from dependency.automation.orchestrator import process_pending_events
 from dependency.db.connection import connect
 from scripts.watch_usgs import poll_once as poll_usgs_once
 from scripts.watch_gdacs import poll_once as poll_gdacs_once
+from scripts.watch_portwatch import poll_once as poll_portwatch_once
 
 
 def require_database() -> None:
@@ -37,6 +38,8 @@ def run_cycle(
     usgs: bool = True,
     gdacs: bool = True,
     worker: bool = True,
+    portwatch: bool = False,
+    portwatch_max_ports: int = 3,
     radius_km: float = 150.0,
     min_magnitude: float = 4.5,
     batch_limit: int = 200,
@@ -54,6 +57,10 @@ def run_cycle(
             event_types={"TC", "FL", "VO", "WF"},
             alert_levels={"Green", "Orange", "Red"},
         )))
+    if portwatch:
+        tasks.append(("PORTWATCH", lambda: poll_portwatch_once(
+            baseline_days=30, max_ports=portwatch_max_ports,
+        )))
     if worker:
         tasks.append(("ORCHESTRATOR", lambda: process_pending_events(
             limit=batch_limit, run_agents=False, radius_km=radius_km
@@ -62,7 +69,18 @@ def run_cycle(
     for name, task in tasks:
         try:
             result = task()
-            if name == "ORCHESTRATOR":
+            if name == "PORTWATCH":
+                errors = result.get("source_errors", [])
+                results[name] = {
+                    "status": "ERROR" if errors else "OK",
+                    "checked_ports": result.get("checked_port_count", 0),
+                    "modeled_ports": result.get("modeled_port_count", 0),
+                    "created_events": len(result.get("created_events", [])),
+                    "unresolved_ports": len(result.get("unresolved_ports", [])),
+                    "stale_signals": len(result.get("stale_signals", [])),
+                    "source_errors": errors,
+                }
+            elif name == "ORCHESTRATOR":
                 failed = int(result.get("failed", 0))
                 results[name] = {
                     "status": "FAILED_EVENTS" if failed else "OK",
@@ -91,6 +109,9 @@ def run_watch(
     usgs_interval: int,
     gdacs_interval: int,
     worker_interval: int,
+    portwatch: bool,
+    portwatch_interval: int,
+    portwatch_max_ports: int,
     min_magnitude: float,
     batch_limit: int,
 ) -> None:
@@ -99,6 +120,8 @@ def run_watch(
         "GDACS": max(60, gdacs_interval),
         "ORCHESTRATOR": max(2, worker_interval),
     }
+    if portwatch:
+        periods["PORTWATCH"] = max(300, portwatch_interval)
     next_due = {name: 0.0 for name in periods}
     print("Live Dependency monitoring is running. Press Ctrl+C to stop.", flush=True)
     try:
@@ -110,6 +133,8 @@ def run_watch(
                     usgs="USGS" in due,
                     gdacs="GDACS" in due,
                     worker="ORCHESTRATOR" in due,
+                    portwatch="PORTWATCH" in due,
+                    portwatch_max_ports=portwatch_max_ports,
                     radius_km=radius_km,
                     min_magnitude=min_magnitude,
                     batch_limit=batch_limit,
@@ -134,11 +159,14 @@ def main() -> int:
     parser.add_argument("--usgs-seconds", type=int, default=60)
     parser.add_argument("--gdacs-seconds", type=int, default=300)
     parser.add_argument("--worker-seconds", type=int, default=5)
+    parser.add_argument("--portwatch", action="store_true", help="Also check bounded IMF PortWatch port activity.")
+    parser.add_argument("--portwatch-seconds", type=int, default=3600)
+    parser.add_argument("--portwatch-max-ports", type=int, default=3)
     parser.add_argument("--batch-limit", type=int, default=200)
     args = parser.parse_args()
 
-    if args.radius_km <= 0 or args.batch_limit <= 0:
-        parser.error("radius-km and batch-limit must be positive")
+    if args.radius_km <= 0 or args.batch_limit <= 0 or args.portwatch_max_ports <= 0:
+        parser.error("radius-km, batch-limit and portwatch-max-ports must be positive")
 
     try:
         require_database()
@@ -153,6 +181,9 @@ def main() -> int:
             usgs_interval=args.usgs_seconds,
             gdacs_interval=args.gdacs_seconds,
             worker_interval=args.worker_seconds,
+            portwatch=args.portwatch,
+            portwatch_interval=args.portwatch_seconds,
+            portwatch_max_ports=args.portwatch_max_ports,
             batch_limit=args.batch_limit,
         )
         return 0
@@ -161,6 +192,8 @@ def main() -> int:
         radius_km=args.radius_km,
         min_magnitude=args.min_mag,
         batch_limit=args.batch_limit,
+        portwatch=args.portwatch,
+        portwatch_max_ports=args.portwatch_max_ports,
     )
     print(json.dumps(result, indent=2))
     return 0 if result["status"] == "OK" else 1

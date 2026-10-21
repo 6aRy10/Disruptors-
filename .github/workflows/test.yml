@@ -50,6 +50,14 @@ jobs:
       - name: Load PostgreSQL/PostGIS seed
         run: python scripts/load_seed_data.py
 
+      - name: Verify investigation schema migrations are repeatable
+        run: |
+          python -m scripts.apply_migrations
+          python -m scripts.apply_migrations
+
+      - name: Validate dashboard JavaScript syntax
+        run: node --check web/app.js
+
       - name: Test enterprise data scale
         run: python -m unittest tests.test_data_scale -v
 

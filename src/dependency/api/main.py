@@ -65,6 +65,7 @@ from dependency.graph.shared_dependencies import backup_independence
 from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
+from dependency.assistant.expeditor import answer_expeditor
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -114,6 +115,13 @@ app.mount(
     StaticFiles(directory=str(WEB_ROOT)),
     name="dashboard-assets",
 )
+
+
+class ExpeditorQuestion(BaseModel):
+    question: str = Field(min_length=2, max_length=1000)
+    event_id: str | None = Field(default=None, max_length=180)
+    sku: str | None = Field(default=None, max_length=120)
+    facility_id: str | None = Field(default=None, max_length=180)
 
 
 class ConfirmFacilityWideCapacity(BaseModel):
@@ -333,6 +341,16 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.post("/app-data/ask")
+def expeditor_read_only(body: ExpeditorQuestion):
+    """Answer from approved read-only domain functions, never raw model SQL."""
+    try:
+        return answer_expeditor(question=body.question, event_id=body.event_id,
+                                sku=body.sku, facility_id=body.facility_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/app-data/events/{event_id}")

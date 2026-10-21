@@ -455,9 +455,17 @@ function renderOperations() {
           · ${esc(row.provenance_class)}
         </span>
       </div>
-      <span class="badge warning">EVIDENCE MISSING</span>
+      <div class="mini-actions">
+        ${row.task_type === "CONFIRM_FACILITY_STATUS" ? `
+          <button class="mini-button confirm-facility-task"
+                  data-task-id="${esc(row.task_id)}">Record confirmed facility state</button>
+        ` : '<span class="badge warning">EVIDENCE MISSING</span>'}
+      </div>
     </div>
   `).join("") || '<div class="muted">No open investigation tasks for the selected event.</div>';
+  document.querySelectorAll(".confirm-facility-task").forEach(button => {
+    button.addEventListener("click", () => confirmFacilityTask(button.dataset.taskId));
+  });
   $("supplierRequests").innerHTML = (ops.supplier_requests || []).map(row => `
     <div class="compact-row">
       <div>
@@ -508,6 +516,49 @@ function renderOperations() {
   document.querySelectorAll(".execute-btn").forEach(btn => {
     btn.addEventListener("click", () => executeApproval(btn.dataset.requestId));
   });
+}
+
+async function confirmFacilityTask(taskId) {
+  // Deliberate human decision: an earthquake proximity cannot close a factory.
+  if (!confirm("Use this action only with independently confirmed private operational evidence. Public event proximity alone is NOT enough. Continue?")) return;
+  const status = prompt("Confirmed facility status: AVAILABLE, DEGRADED or UNAVAILABLE", "DEGRADED");
+  if (status === null) return;
+  const normalized = status.trim().toUpperCase();
+  if (!["AVAILABLE", "DEGRADED", "UNAVAILABLE"].includes(normalized)) {
+    toast("Select a valid confirmed status.", true);
+    return;
+  }
+  const expected = normalized === "AVAILABLE" ? 1 : normalized === "UNAVAILABLE" ? 0 : 0.5;
+  const inputMultiplier = prompt("Confirmed capacity multiplier (1 = normal, 0 = stopped)", String(expected));
+  if (inputMultiplier === null) return;
+  const multiplier = Number(inputMultiplier);
+  if (!Number.isFinite(multiplier) || multiplier < 0 || multiplier > 1) {
+    toast("Capacity multiplier must be between 0 and 1.", true);
+    return;
+  }
+  const evidenceReference = prompt("Private evidence reference (supplier reply ID, ERP record, or signed operational report)");
+  if (!evidenceReference?.trim()) return;
+  const evidenceSource = prompt("Evidence source or authorized operational contact", "SIMULATED_PRIVATE supplier confirmation");
+  if (!evidenceSource?.trim()) return;
+  const confirmedBy = prompt("Operator recording this confirmation", "Hackathon planner");
+  if (!confirmedBy?.trim()) return;
+  const reason = prompt("Summarize the independently confirmed operational change");
+  if (!reason?.trim()) return;
+  try {
+    const result = await api(`/investigations/tasks/${encodeURIComponent(taskId)}/confirm-facility`, {
+      method: "POST",
+      body: JSON.stringify({
+        status: normalized, capacity_multiplier: multiplier,
+        evidence_reference: evidenceReference.trim(),
+        evidence_source: evidenceSource.trim(),
+        confirmed_by: confirmedBy.trim(), reason: reason.trim()
+      }),
+    });
+    toast(`Evidence recorded; operational state v${result?.resolution?.state_version || "?"}. Replanning queued.`);
+    await loadSnapshot(state.selectedEventId);
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 async function decideApproval(requestId, decision) {

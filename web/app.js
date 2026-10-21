@@ -116,6 +116,7 @@ function renderAll() {
   renderSelectedEvent();
   renderActions();
   renderOperations();
+  renderMemory();
   renderTruth();
   syncControlDefaults();
 }
@@ -519,6 +520,29 @@ async function executeApproval(requestId) {
     toast(error.message, true);
   }
 }
+
+function renderMemory() {
+  const rows = state.snapshot?.operations?.memory_hypotheses || [];
+  $("memoryHypotheses").innerHTML = rows.map(row => `
+    <div class="memory-card">
+      <div class="memory-head">
+        <div>
+          <strong>${esc(row.summary)}</strong>
+          <span>${esc(row.similarity_reason)} · relevance ${number(row.similarity_score)}/100 · ${esc(row.provenance_class)}</span>
+        </div>
+        <span class="badge ${row.success ? "success" : "warning"}">${row.success ? "SUCCESS" : "FAILED / PARTIAL"}</span>
+      </div>
+      <p>${esc(row.lesson)}</p>
+      <div class="memory-metrics">
+        <span>delay <b>${row.actual_supplier_delay_days == null ? "—" : number(row.actual_supplier_delay_days) + "d"}</b></span>
+        <span>shortage <b>${row.actual_shortage_units == null ? "—" : number(row.actual_shortage_units)}</b></span>
+        <span>cost <b>${row.actual_cost_eur == null ? "—" : money(row.actual_cost_eur)}</b></span>
+      </div>
+      <div class="memory-rule">${esc(row.usage_rule)}</div>
+    </div>
+  `).join("") || '<div class="muted">No closed same-type incident memory is available yet.</div>';
+}
+
 
 function renderTruth() {
   const truth = state.snapshot?.truth_model || {};

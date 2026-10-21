@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 
 from dependency.db.connection import connect
+from dependency.memory.seed import load_seed_memory
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "config"
@@ -147,6 +148,7 @@ def reset_demo_state() -> dict:
         conn.execute("DELETE FROM incidents")
         conn.execute("DELETE FROM event_outbox")
         conn.execute("UPDATE operational_state_version SET version=1 WHERE singleton=true")
+        load_seed_memory(conn)
         conn.commit()
 
     return {

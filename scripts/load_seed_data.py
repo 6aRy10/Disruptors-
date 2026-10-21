@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from dependency.db.connection import connect
+from dependency.memory.seed import load_seed_memory
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config"
@@ -586,6 +587,7 @@ def load() -> None:
         # Seed loading is also the deterministic demo reset.
         conn.execute("DELETE FROM supplier_capacity_observations")
         conn.execute("UPDATE operational_state_version SET version = 1 WHERE singleton = true")
+        load_seed_memory(conn)
 
         conn.commit()
 

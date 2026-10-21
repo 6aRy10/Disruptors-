@@ -10,11 +10,42 @@ from dependency.memory.service import (
     save_plan_snapshot,
     similar_incidents,
 )
+from dependency.services.demo_reset import reset_demo_state
 
 
 class IncidentMemoryTests(unittest.TestCase):
     EVENT_ID = "IDN-CIANJUR-2022-USGS-us7000ir9t"
     SCENARIO_ID = "SCN-CIANJUR-REPLAY-01"
+
+    def setUp(self):
+        reset_demo_state()
+
+    def tearDown(self):
+        reset_demo_state()
+
+    def test_seed_memory_is_explicitly_simulated_private_and_ranked(self):
+        rows = similar_incidents(
+            event_type="earthquake",
+            event_id=self.EVENT_ID,
+            limit=10,
+        )
+        seeded = next(
+            row for row in rows
+            if row["incident_id"] == "MEM-CIANJUR-PRIOR-01"
+        )
+        self.assertEqual(seeded["similarity_score"], 100)
+        self.assertEqual(
+            seeded["similarity_reason"],
+            "SAME_EXTERNAL_EVENT_PRIOR_RUN",
+        )
+        self.assertEqual(
+            seeded["provenance_class"],
+            "SIMULATED_PRIVATE",
+        )
+        self.assertEqual(
+            seeded["usage_rule"],
+            "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
+        )
 
     def test_operational_memory_lifecycle(self):
         incident = ensure_incident(

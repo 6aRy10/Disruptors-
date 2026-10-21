@@ -306,21 +306,36 @@ def close_incident(
     return {"incident_id": incident_id, "status": "CLOSED"}
 
 
-def similar_incidents(*, event_type: str, limit: int = 5) -> list[dict]:
-    """Retrieve same-type closed incidents as hypotheses, never current proof."""
+def similar_incidents(
+    *,
+    event_type: str,
+    limit: int = 5,
+    event_id: str | None = None,
+) -> list[dict]:
+    """Retrieve closed operational memory as hypotheses, never current proof.
+
+    Exact prior runs of the same external event rank first. Other incidents of
+    the same event type follow. The score is retrieval relevance, not evidence
+    that the current event has the same operational effect.
+    """
     with connect() as conn:
         rows = conn.execute(
             """
             SELECT
               i.incident_id,i.event_id,i.summary,o.actual_supplier_delay_days,
-              o.actual_shortage_units,o.actual_cost_eur,o.success,o.lesson
+              o.actual_shortage_units,o.actual_cost_eur,o.success,o.lesson,
+              i.provenance_class,o.updated_at,
+              CASE
+                WHEN %s::text IS NOT NULL AND i.event_id=%s::text THEN 100
+                ELSE 70
+              END AS similarity_score
             FROM incidents i
             JOIN incident_outcomes o ON o.incident_id = i.incident_id
             WHERE i.event_type = %s AND i.status = 'CLOSED'
-            ORDER BY o.updated_at DESC
+            ORDER BY similarity_score DESC,o.updated_at DESC,i.incident_id
             LIMIT %s
             """,
-            (event_type, int(limit)),
+            (event_id, event_id, event_type, int(limit)),
         ).fetchall()
 
     return [
@@ -328,11 +343,22 @@ def similar_incidents(*, event_type: str, limit: int = 5) -> list[dict]:
             "incident_id": r[0],
             "event_id": r[1],
             "summary": r[2],
-            "actual_supplier_delay_days": float(r[3]) if r[3] is not None else None,
-            "actual_shortage_units": float(r[4]) if r[4] is not None else None,
+            "actual_supplier_delay_days": (
+                float(r[3]) if r[3] is not None else None
+            ),
+            "actual_shortage_units": (
+                float(r[4]) if r[4] is not None else None
+            ),
             "actual_cost_eur": float(r[5]) if r[5] is not None else None,
             "success": r[6],
             "lesson": r[7],
+            "provenance_class": r[8],
+            "similarity_score": int(r[10]),
+            "similarity_reason": (
+                "SAME_EXTERNAL_EVENT_PRIOR_RUN"
+                if event_id and r[1] == event_id
+                else "SAME_EVENT_TYPE"
+            ),
             "usage_rule": "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
         }
         for r in rows

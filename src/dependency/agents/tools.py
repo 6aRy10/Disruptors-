@@ -517,11 +517,20 @@ def get_transport_options(
     }
 
 
-def find_similar_incidents(event_type: str, limit: int = 5) -> dict:
+def find_similar_incidents(
+    event_type: str,
+    event_id: str | None,
+    limit: int = 5,
+) -> dict:
     return {
         "event_type": event_type,
+        "event_id": event_id,
         "usage_rule": "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
-        "incidents": similar_incidents(event_type=event_type, limit=limit),
+        "incidents": similar_incidents(
+            event_type=event_type,
+            event_id=event_id,
+            limit=limit,
+        ),
     }
 
 
@@ -763,9 +772,10 @@ TOOL_SCHEMAS = [
             "type": "object",
             "properties": {
                 "event_type": {"type": "string"},
+                "event_id": {"type": ["string", "null"]},
                 "limit": {"type": "integer"},
             },
-            "required": ["event_type", "limit"],
+            "required": ["event_type", "event_id", "limit"],
             "additionalProperties": False,
         },
     },

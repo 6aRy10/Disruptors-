@@ -4,6 +4,7 @@ from dependency.db.connection import connect
 from dependency.graph.event_impact import trace_business_event_impact
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.ingest.events import list_recent_events
+from dependency.memory.service import similar_incidents
 from dependency.services.approvals import list_approval_requests
 from dependency.services.execution import list_action_executions
 from dependency.solver.portfolio import plan_event_recovery
@@ -214,6 +215,14 @@ def dashboard_snapshot(
         except ValueError as exc:
             error = str(exc)
 
+    memory_hypotheses = []
+    if impact and impact.get("event_type"):
+        memory_hypotheses = similar_incidents(
+            event_type=impact["event_type"],
+            event_id=selected_event_id,
+            limit=5,
+        )
+
     open_incidents = _open_incidents()
     pending_approvals = list_approval_requests(
         status="PENDING",
@@ -273,6 +282,7 @@ def dashboard_snapshot(
             "approved_actions_waiting_execution": approved_unexecuted,
             "executions": executions,
             "supplier_requests": supplier_requests,
+            "memory_hypotheses": memory_hypotheses,
         },
         "truth_model": {
             "VERIFIED_PUBLIC": (

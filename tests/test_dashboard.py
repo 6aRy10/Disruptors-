@@ -44,6 +44,11 @@ class DashboardSnapshotTests(unittest.TestCase):
         self.assertIn("VERIFIED_PUBLIC", first["truth_model"])
         self.assertIn("SIMULATED_PRIVATE", first["truth_model"])
         self.assertGreaterEqual(len(first["claim_rules"]), 4)
+        self.assertTrue(first["operations"]["memory_hypotheses"])
+        self.assertEqual(
+            first["operations"]["memory_hypotheses"][0]["usage_rule"],
+            "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
+        )
 
 
 if __name__ == "__main__":

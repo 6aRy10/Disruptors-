@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from dependency.db.connection import connect, postgis_version
+from dependency.dashboard.snapshot import dashboard_snapshot
 from dependency.agents.orchestrator import run_event_autopilot, run_incident_agents
 from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.incidents.triage import triage_event
@@ -55,6 +60,8 @@ app = FastAPI(
     description="Event-to-exposure-to-recovery API backed by PostgreSQL/PostGIS.",
 )
 
+WEB_ROOT = Path(__file__).resolve().parents[3] / "web"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -66,6 +73,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+
+app.mount(
+    "/dashboard-assets",
+    StaticFiles(directory=str(WEB_ROOT)),
+    name="dashboard-assets",
 )
 
 
@@ -220,6 +234,27 @@ def _update_with_optional_replan(
             sku=sku,
         )
     return response
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard_page():
+    return (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+
+@app.get("/dashboard/snapshot")
+def dashboard_data(
+    event_id: str | None = Query(default=None),
+    scenario_id: str | None = Query(default=None),
+    radius_km: float = Query(default=150.0, gt=0, le=1000),
+):
+    try:
+        return dashboard_snapshot(
+            event_id=event_id,
+            scenario_id=scenario_id,
+            radius_km=radius_km,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/health")

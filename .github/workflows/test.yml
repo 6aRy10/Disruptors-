@@ -53,6 +53,9 @@ jobs:
       - name: Test network graph views
         run: python -m unittest tests.test_network_views -v
 
+      - name: Test judge dashboard snapshot
+        run: python -m unittest tests.test_dashboard -v
+
       - name: Test ground truth
         run: python -m unittest tests.test_ground_truth -v
 

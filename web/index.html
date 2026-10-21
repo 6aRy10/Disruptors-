@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dependency Control Tower</title>
+  <link rel="stylesheet" href="/dashboard-assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">DEPENDENCY / AGENTIC SUPPLY CONTROL</div>
+      <h1>From disruption to executable recovery.</h1>
+    </div>
+    <div class="top-actions">
+      <span id="connectionBadge" class="badge neutral">CONNECTING</span>
+      <button id="refreshBtn" class="button secondary">Refresh</button>
+      <button id="runAgentsBtn" class="button">Run agents</button>
+      <button id="resetBtn" class="button danger-outline">Reset demo</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="metric-strip" id="metricStrip">
+      <article class="metric"><span>State version</span><strong id="mState">—</strong><small>changes invalidate plans</small></article>
+      <article class="metric"><span>Open incidents</span><strong id="mIncidents">—</strong><small>auditable operational memory</small></article>
+      <article class="metric"><span>Products reached</span><strong id="mProducts">—</strong><small>through explicit graph edges</small></article>
+      <article class="metric"><span>Revenue connected</span><strong id="mRevenue">—</strong><small>potential exposure, not guaranteed loss</small></article>
+      <article class="metric"><span>Margin connected</span><strong id="mMargin">—</strong><small>simulated private economics</small></article>
+      <article class="metric critical"><span>Current shortage</span><strong id="mShortage">—</strong><small>deterministic conservative plan</small></article>
+    </section>
+
+    <section class="workspace">
+      <aside class="event-rail panel">
+        <div class="panel-title">
+          <div>
+            <span class="eyebrow">SIGNALS</span>
+            <h2>Event feed</h2>
+          </div>
+          <label class="tiny-toggle">
+            <input id="autoRefresh" type="checkbox" checked>
+            <span>live refresh</span>
+          </label>
+        </div>
+        <div id="eventFeed" class="event-feed"></div>
+      </aside>
+
+      <section class="main-column">
+        <div class="hero-grid">
+          <article class="panel map-panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">PUBLIC NETWORK + PRIVATE LINKS</span>
+                <h2>Network exposure</h2>
+              </div>
+              <div id="networkStats" class="inline-stats"></div>
+            </div>
+            <div class="map-wrap">
+              <svg id="networkMap" viewBox="0 0 1000 470" role="img" aria-label="Supply network map"></svg>
+              <div class="map-legend">
+                <span><i class="dot public"></i> public supplier node</span>
+                <span><i class="dot linked"></i> operationally linked</span>
+                <span><i class="dot exposed"></i> selected-event exposure</span>
+              </div>
+            </div>
+            <div id="eventTruthBanner" class="truth-banner"></div>
+          </article>
+
+          <article class="panel incident-panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">CURRENT EVENT</span>
+                <h2 id="selectedEventTitle">Select an event</h2>
+              </div>
+              <span id="eventModeBadge" class="badge neutral">—</span>
+            </div>
+            <div id="eventMeta" class="event-meta"></div>
+            <div id="commercialImpact" class="commercial-grid"></div>
+            <div class="section-label">Affected products</div>
+            <div id="productChips" class="chips"></div>
+            <div class="section-label">Deterministic status</div>
+            <div id="portfolioStatus" class="status-block"></div>
+          </article>
+        </div>
+
+        <article class="panel graph-panel">
+          <div class="panel-title">
+            <div>
+              <span class="eyebrow">DEPENDENCY DIGITAL TWIN</span>
+              <h2 id="graphTitle">Product dependency graph</h2>
+            </div>
+            <div class="graph-controls">
+              <span id="graphRule" class="muted">Select an impacted SKU.</span>
+            </div>
+          </div>
+          <div id="dependencyGraph" class="dependency-graph empty-state">
+            Select a product above to trace raw/material sources → assembly → SKU → customer commitments.
+          </div>
+        </article>
+
+        <div class="two-col">
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">RECOVERY PLANNER</span>
+                <h2>Ranked action queue</h2>
+              </div>
+              <span id="planStateBadge" class="badge neutral">—</span>
+            </div>
+            <div id="actionQueue" class="action-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">DETERMINISTIC GUARDRAILS</span>
+                <h2>Rejected actions</h2>
+              </div>
+            </div>
+            <div id="rejectedActions" class="action-list"></div>
+          </article>
+        </div>
+
+        <div class="two-col">
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">EVIDENCE LOOP</span>
+                <h2>Supplier confirmations</h2>
+              </div>
+            </div>
+            <div id="supplierRequests" class="compact-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <span class="eyebrow">HUMAN CONTROL</span>
+                <h2>Pending approvals</h2>
+              </div>
+            </div>
+            <div id="approvals" class="compact-list"></div>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section class="control-section">
+      <div class="control-head">
+        <div>
+          <span class="eyebrow">JUDGE CONTROL SURFACE</span>
+          <h2>Change reality. Force the system to replan.</h2>
+          <p>Each confirmed edit increments operational state. Old plan snapshots remain in memory.</p>
+        </div>
+        <div id="controlResult" class="control-result">No edit submitted.</div>
+      </div>
+
+      <div class="control-grid">
+        <form id="capacityForm" class="control-card">
+          <h3>Supplier capacity</h3>
+          <label>Facility <input name="facility_id" value="ADI26-0240"></label>
+          <label>SKU <input name="sku" value="JI2993"></label>
+          <label>Units / week <input name="capacity_units" type="number" value="5500" min="0"></label>
+          <label>Scenario <input name="scenario_id" value="SCN-CIANJUR-REPLAY-01"></label>
+          <button class="button" type="submit">Confirm capacity</button>
+        </form>
+
+        <form id="inventoryForm" class="control-card">
+          <h3>Inventory</h3>
+          <label>Site <input name="site_id" value="WH-EU"></label>
+          <label>Item ID <input name="item_id" value="JI2993"></label>
+          <label>On hand <input name="qty_on_hand" type="number" value="2100" min="0"></label>
+          <label>Safety stock <input name="safety_stock" type="number" value="500" min="0"></label>
+          <button class="button" type="submit">Update inventory</button>
+        </form>
+
+        <form id="facilityForm" class="control-card">
+          <h3>Facility state</h3>
+          <label>Facility <input name="facility_id" value="ADI26-0240"></label>
+          <label>Status
+            <select name="status">
+              <option>AVAILABLE</option>
+              <option>DEGRADED</option>
+              <option>UNAVAILABLE</option>
+              <option>UNKNOWN</option>
+            </select>
+          </label>
+          <label>Capacity multiplier <input name="capacity_multiplier" type="number" value="1" min="0" max="1" step="0.05"></label>
+          <label>Scenario <input name="scenario_id" value="SCN-CIANJUR-REPLAY-01"></label>
+          <button class="button" type="submit">Change facility</button>
+        </form>
+
+        <form id="leadTimeForm" class="control-card">
+          <h3>Setup lead time</h3>
+          <label>Facility <input name="facility_id" value="ADI26-0240"></label>
+          <label>SKU <input name="sku" value="JI2993"></label>
+          <label>Days <input name="setup_lead_days" type="number" value="2" min="0"></label>
+          <label>Scenario <input name="scenario_id" value="SCN-CIANJUR-REPLAY-01"></label>
+          <button class="button" type="submit">Update lead time</button>
+        </form>
+
+        <form id="poForm" class="control-card">
+          <h3>Purchase-order ETA</h3>
+          <label>PO <input name="po_id" value="PO-THREAD-001"></label>
+          <label>New ETA <input name="eta" value="2026-10-28T10:00:00+00:00"></label>
+          <label>SKU <input name="sku" value="JI2993"></label>
+          <label>Scenario <input name="scenario_id" value="SCN-CIANJUR-REPLAY-01"></label>
+          <button class="button" type="submit">Move PO ETA</button>
+        </form>
+
+        <form id="substitutionForm" class="control-card">
+          <h3>Substitution approval</h3>
+          <label>Material <input name="material_id" value="MAT-RUBBER-OUTSOLE"></label>
+          <label>Substitute <input name="substitute_material_id" value="MAT-RUBBER-OUTSOLE-B"></label>
+          <label>Status
+            <select name="approved">
+              <option value="true">Approve</option>
+              <option value="false" selected>Reject</option>
+            </select>
+          </label>
+          <label>Engineering status <input name="engineering_status" value="NOT_APPROVED"></label>
+          <button class="button" type="submit">Update substitute</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="truth-section panel">
+      <div class="panel-title">
+        <div>
+          <span class="eyebrow">AUDITABILITY</span>
+          <h2>Truth model</h2>
+        </div>
+      </div>
+      <div id="truthModel" class="truth-grid"></div>
+      <div id="claimRules" class="claim-rules"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <script src="/dashboard-assets/app.js"></script>
+</body>
+</html>

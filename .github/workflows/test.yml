@@ -97,6 +97,9 @@ jobs:
       - name: Test agent runtime argument recovery
         run: python -m unittest tests.test_agent_runtime_arguments -v
 
+      - name: Test evidence agent can only draft review requests
+        run: python -m unittest tests.test_evidence_agent -v
+
       - name: Test agent contracts
         run: python -m unittest tests.test_agents -v
 

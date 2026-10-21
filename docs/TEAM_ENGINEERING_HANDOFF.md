@@ -164,3 +164,15 @@ python -m scripts.aiven_preflight --probe-kafka
 
 Only `READY_TO_STREAM` establishes broker/topic reachability. Do not enable
 Kafka publishing or migrate PostgreSQL until the respective checks pass.
+
+## Opt-in evidence investigator agent
+
+For a new live event with a linked private graph but no confirmed operational
+scenario, the deterministic worker stores prioritized investigation tasks.
+With explicit `--agents` on `python -m scripts.run_live_stack`, the
+Evidence Investigator may retrieve those tasks and prepare a limited set of
+human-review drafts. Model tool traces are stored with the existing incident.
+This uses configured paid model credits. The default without `--agents` is
+free deterministic ingestion and queues only. The agent has **no tool** for
+confirming disruption, sending supplier messages, modifying capacity, or
+executing protected actions. Never leave paid agent mode on by accident.

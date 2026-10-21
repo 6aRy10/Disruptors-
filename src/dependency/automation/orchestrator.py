@@ -122,6 +122,36 @@ def _process_external_event(
             incident_id=triage["incident"]["incident_id"],
             triage=triage,
         )
+        evidence_agent = None
+        if run_agents and tasks:
+            # Agent access is opt-in: it may draft questions, never execute.
+            from dependency.agents.runtime import run_agent
+            from dependency.agents.specs import EVIDENCE_INVESTIGATOR
+            from dependency.memory.service import record_agent_run
+            agent_result = run_agent(
+                spec=EVIDENCE_INVESTIGATOR,
+                task=(
+                    f"Investigate event {event_id}. Inspect its stored evidence "
+                    "tasks and prepare up to three urgent evidence requests. "
+                    "Do not contact anyone or declare disruptions confirmed."
+                ),
+                max_tool_rounds=5,
+            )
+            with connect() as conn:
+                state_version=int(conn.execute(
+                    "SELECT version FROM operational_state_version WHERE singleton=true"
+                ).fetchone()[0])
+            record_agent_run(
+                incident_id=triage["incident"]["incident_id"],
+                agent_name=agent_result["agent"],model=agent_result["model"],
+                output_text=agent_result["output_text"],
+                tool_trace=agent_result["tool_trace"],state_version=state_version,
+            )
+            evidence_agent={
+                "agent_run_recorded":True,"model":agent_result["model"],
+                "tool_rounds":agent_result["tool_rounds"],
+                "output_text":agent_result["output_text"],
+            }
         return {
             "status": "INVESTIGATION_REQUIRED",
             "event_id": event_id,
@@ -131,6 +161,7 @@ def _process_external_event(
             "priority_tasks": tasks[:10],
             "required_evidence": triage.get("next_required_evidence", []),
             "business_exposure": triage.get("commercial_totals", {}),
+            "evidence_agent": evidence_agent,
             "claim_rule": "POTENTIAL_EXPOSURE_ONLY_NOT_CONFIRMED_LOSS",
         }
 

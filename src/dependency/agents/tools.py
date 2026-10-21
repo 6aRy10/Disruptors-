@@ -14,6 +14,8 @@ from dependency.graph.shared_dependencies import backup_independence
 from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk
 from dependency.services.approvals import list_approval_requests, request_human_approval
+from dependency.investigation.tasks import list_investigation_tasks
+from dependency.investigation.outreach import prepare_investigation_outreach
 from dependency.services.supplier_outreach import (
     create_capacity_confirmation_request,
     dispatch_confirmation_request,
@@ -144,6 +146,23 @@ def get_open_purchase_orders(material_id: str, need_by: str) -> dict:
         need_by=date.fromisoformat(need_by),
     )
 
+
+
+def get_event_investigation_tasks(event_id: str) -> dict:
+    with connect() as conn:
+        rows=conn.execute(
+            """
+            SELECT incident_id FROM incidents WHERE event_id=%s
+              AND status IN ('OPEN','INVESTIGATING')
+            ORDER BY detected_at DESC LIMIT 1
+            """,
+            (event_id,),
+        ).fetchall()
+    incident_id=rows[0][0] if rows else None
+    tasks=list_investigation_tasks(incident_id=incident_id,limit=50) if incident_id else []
+    return {"event_id":event_id,"incident_id":incident_id,"tasks":tasks,
+            "task_count":len(tasks),
+            "rule":"These are INFERRED evidence gaps, not verified supplier disruptions."}
 
 
 def search_event_evidence(event_id: str) -> dict:
@@ -606,6 +625,8 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "get_event": lambda: get_event(**args),
         "find_facilities_near_event": lambda: find_facilities_near_event(**args),
         "search_event_evidence": lambda: search_event_evidence(**args),
+        "get_event_investigation_tasks": lambda: get_event_investigation_tasks(**args),
+        "prepare_investigation_outreach": lambda: prepare_investigation_outreach(**args),
         "normalize_company": lambda: normalize_company(**args),
         "trace_upstream_dependencies": lambda: trace_upstream_dependencies(**args),
         "explode_bom": lambda: explode_bom(**args),
@@ -636,6 +657,24 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
 
 
 TOOL_SCHEMAS = [
+    {
+        "type":"function","name":"get_event_investigation_tasks",
+        "description":"Read exact, stored evidence gaps for one event, including existing task IDs and provenance. No invented supplier links.",
+        "strict":True,
+        "parameters":{
+            "type":"object","properties":{"event_id":{"type":"string"}},
+            "required":["event_id"],"additionalProperties":False,
+        },
+    },
+    {
+        "type":"function","name":"prepare_investigation_outreach",
+        "description":"Prepare one durable human-review draft for a stored investigation task. It NEVER sends Slack, email, confirms private facts, or changes operational capacity.",
+        "strict":True,
+        "parameters":{
+            "type":"object","properties":{"task_id":{"type":"string"}},
+            "required":["task_id"],"additionalProperties":False,
+        },
+    },
     {
         "type": "function",
         "name": "get_event",

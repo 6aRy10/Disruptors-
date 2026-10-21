@@ -38,6 +38,7 @@ def run_cycle(
     usgs: bool = True,
     gdacs: bool = True,
     worker: bool = True,
+    agents: bool = False,
     portwatch: bool = False,
     portwatch_max_ports: int = 3,
     radius_km: float = 150.0,
@@ -63,7 +64,7 @@ def run_cycle(
         )))
     if worker:
         tasks.append(("ORCHESTRATOR", lambda: process_pending_events(
-            limit=batch_limit, run_agents=False, radius_km=radius_km
+            limit=batch_limit, run_agents=agents, radius_km=radius_km
         )))
 
     for name, task in tasks:
@@ -112,6 +113,7 @@ def run_watch(
     portwatch: bool,
     portwatch_interval: int,
     portwatch_max_ports: int,
+    agents: bool,
     min_magnitude: float,
     batch_limit: int,
 ) -> None:
@@ -134,6 +136,7 @@ def run_watch(
                     gdacs="GDACS" in due,
                     worker="ORCHESTRATOR" in due,
                     portwatch="PORTWATCH" in due,
+                    agents=agents,
                     portwatch_max_ports=portwatch_max_ports,
                     radius_km=radius_km,
                     min_magnitude=min_magnitude,
@@ -160,6 +163,7 @@ def main() -> int:
     parser.add_argument("--gdacs-seconds", type=int, default=300)
     parser.add_argument("--worker-seconds", type=int, default=5)
     parser.add_argument("--portwatch", action="store_true", help="Also check bounded IMF PortWatch port activity.")
+    parser.add_argument("--agents", action="store_true", help="Opt in to paid model investigation of new evidence tasks.")
     parser.add_argument("--portwatch-seconds", type=int, default=3600)
     parser.add_argument("--portwatch-max-ports", type=int, default=3)
     parser.add_argument("--batch-limit", type=int, default=200)
@@ -184,6 +188,7 @@ def main() -> int:
             portwatch=args.portwatch,
             portwatch_interval=args.portwatch_seconds,
             portwatch_max_ports=args.portwatch_max_ports,
+            agents=args.agents,
             batch_limit=args.batch_limit,
         )
         return 0
@@ -194,6 +199,7 @@ def main() -> int:
         batch_limit=args.batch_limit,
         portwatch=args.portwatch,
         portwatch_max_ports=args.portwatch_max_ports,
+        agents=args.agents,
     )
     print(json.dumps(result, indent=2))
     return 0 if result["status"] == "OK" else 1

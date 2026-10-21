@@ -134,8 +134,33 @@ Stop when there is:
 )
 
 
+EVIDENCE_INVESTIGATOR = AgentSpec(
+    name="Evidence Investigator",
+    role="Turn graph-linked missing facts into reviewable evidence questions.",
+    tool_names=(
+        "get_event",
+        "get_event_investigation_tasks",
+        "search_event_evidence",
+        "prepare_investigation_outreach",
+    ),
+    instructions=COMMON_GUARDRAILS
+    + """
+Your job:
+- Query stored investigation tasks for the event. Never invent one.
+- Select relevant outstanding tasks based on explicit private graph links.
+- Use prepare_investigation_outreach for a small number of high-value tasks.
+- Every draft is for human review only; no contact is automatically messaged.
+- Never claim a public hazard caused actual factory damage.
+- Never mark evidence confirmed, change capacity, or execute protected actions.
+- Summarize which contact is modeled, what evidence was requested, and what
+  still needs an authorized operator's confirmation.
+""",
+)
+
+
 AGENTS = {
     "signal": SIGNAL_INVESTIGATOR,
+    "evidence": EVIDENCE_INVESTIGATOR,
     "impact": IMPACT_INVESTIGATOR,
     "recovery": RECOVERY_PLANNER,
 }

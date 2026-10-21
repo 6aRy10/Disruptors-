@@ -81,7 +81,7 @@ def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
                     "occurred_at": occurred_at.isoformat() if occurred_at else None,
                     "latitude": float(event["latitude"]),
                     "longitude": float(event["longitude"]),
-                    "provenance_class": "VERIFIED_PUBLIC",
+                    "provenance_class": event.get("provenance_class", "VERIFIED_PUBLIC"),
                 },
             )
 

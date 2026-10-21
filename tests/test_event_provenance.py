@@ -25,6 +25,22 @@ class EventProvenanceTests(unittest.TestCase):
         self.assertEqual(params[-2], "PUBLIC_DERIVED")
         conn.commit.assert_called_once()
 
+    @patch("dependency.ingest.events.enqueue_outbox")
+    @patch("dependency.ingest.events.connect")
+    def test_new_outbox_event_keeps_public_derived_label(self, connect, enqueue):
+        conn = MagicMock()
+        conn.execute.return_value.fetchone.return_value = None
+        connect.return_value.__enter__.return_value = conn
+        upsert_external_event({
+            "event_id":"PORT-DERIVED-NEW","event_type":"port_activity_anomaly",
+            "source":"IMF PortWatch","latitude":20.0,"longitude":114.0,
+            "provenance_class":"PUBLIC_DERIVED",
+        })
+        self.assertEqual(
+            enqueue.call_args.kwargs["payload"]["provenance_class"],
+            "PUBLIC_DERIVED",
+        )
+
     def test_portwatch_derived_class(self):
         event = normalize_anomaly_event(
             port={"portid": "1", "LOCODE": "CN YTN", "lat": 22.1, "lon": 114.2},

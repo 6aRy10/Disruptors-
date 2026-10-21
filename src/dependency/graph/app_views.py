@@ -217,6 +217,12 @@ def map_hazard_reports(*, days: int = 90, limit: int = 350) -> dict:
                 'earthquake','flood','wildfire','tropical_cyclone','volcano',
                 'port_disruption','port_activity_anomaly'
               )
+              AND (
+                event_type != 'earthquake' OR source != 'USGS'
+                OR CASE WHEN jsonb_typeof(raw_json #> '{properties,mag}')='number'
+                        THEN (raw_json #>> '{properties,mag}')::numeric
+                        ELSE NULL END >= 4.5
+              )
               AND occurred_or_effective_at >= now() - (%s * interval '1 day')
               AND occurred_or_effective_at <= now() + interval '2 day'
             ORDER BY occurred_or_effective_at DESC,event_id

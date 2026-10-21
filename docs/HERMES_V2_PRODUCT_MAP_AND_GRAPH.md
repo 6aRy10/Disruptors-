@@ -29,3 +29,34 @@ Date: 2026-10-21
 - Authenticated supplier evidence and protected operational execution.
 - Real-world event screening, verified trade-policy feeds and freshness.
 - Local browser regression on Windows and a secure managed deployment.
+
+## Hermes v3 hazard semantics and page flow (2026-10-21)
+
+Backend now exposes `/app-data/map/hazards?days=90&limit=350`,
+with recorded source geometry, type, event ID, published occurrence time, and
+provenance. Orange denotes a **reported hazard observation**. It does not mean
+the user selected a dot, or that a supplier is damaged, or that the incident
+is currently active. Selection is a **white ring**; company graph paths at
+potential exposure use a **green ring**. Draw polygon footprints only when
+stored event geometry itself is polygonal; the current USGS/GDACS normalizer
+stores POINT coordinates, so do not invent storm paths or impact circles.
+
+USGS earthquakes with a numeric source magnitude below 4.5 are not shown as
+orange hazard reports in the overview map. They remain in the event archive
+and incident records. The cutoff is a *display noise filter*, not a guarantee
+of no damage. The local source-backed map does not claim to predict storms.
+
+A user-visible Hermes v3 patch upgrades the owner's **private** React+Vite
+frontend without shipping fonts, landing-page footage or hidden waitlist
+settings into the public repository. Its page is naturally scrollable, and
+the main map and graph are separate work areas. Ordinary mouse wheel scrolls
+the page; Ctrl+wheel explicitly zooms the map or graph. The map now leads
+into a data-backed, scrollable incident brief. The graph can show details in
+its own large workspace. The repeated internal `DEMO TRUTH RULE` banner has
+been removed; uncertainty remains near each relevant fact.
+
+Local user setup: checkout this backend branch and run FastAPI. Apply the
+private `hermes-v3-overlay` patch over an existing Hermes v2 folder, then
+run `npm run test:ui` and `npm run dev`. The script installs no new Python
+packages and never reloads the PostgreSQL data. No deployment or broad public
+write permissions are implied.

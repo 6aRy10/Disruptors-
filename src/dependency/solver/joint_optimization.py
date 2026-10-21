@@ -181,7 +181,7 @@ def optimize_joint_recovery(
             "units": int(used),
             "priority": int(order["priority"]),
             "unit_margin_eur": float(order["unit_margin_eur"]),
-            "unit_revenue_eur": float(order["unit_revenue_eur"]),
+            "unit_revenue_eur": float(order.get("unit_revenue_eur", 0)),
             "transport_cost_eur_per_unit": (float(lane["cost_eur_per_unit"]) if lane else 0.0),
             "provisional": bool(resource["provisional"]),
             "requires_approval": bool(resource["requires_approval"]),

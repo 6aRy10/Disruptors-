@@ -190,7 +190,7 @@ def normalize_company(name: str, country: str | None = None, limit: int = 5) -> 
               network_facility_id,os_id,name,official_name,country,city,
               parent_organizations,source_url,osh_url,official_provenance
             FROM network_facilities
-            WHERE (%s IS NULL OR lower(country)=lower(%s))
+            WHERE (%s::text IS NULL OR lower(country)=lower(%s::text))
             ORDER BY network_facility_id
             """,
             (country, country),

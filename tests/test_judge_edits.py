@@ -71,8 +71,13 @@ class JudgeEditTests(unittest.TestCase):
             scenario_id=self.SCENARIO_ID,
             sku="JI2993",
         )
-        plan_b = next(p for p in plans if p["plan_id"] == "PLAN-B-SUBSTITUTE-OUTSOLE")
-        self.assertEqual(plan_b["decision"], "FEASIBLE")
+        substitute = next(
+            p
+            for p in plans
+            if p["plan_type"] == "MATERIAL_SUBSTITUTION"
+            and p["evidence"]["material_id"] == "MAT-RUBBER-OUTSOLE"
+        )
+        self.assertEqual(substitute["decision"], "CONDITIONALLY_FEASIBLE")
 
         with connect() as conn:
             pending = conn.execute(
@@ -100,10 +105,13 @@ class JudgeEditTests(unittest.TestCase):
             scenario_id=self.SCENARIO_ID,
             sku="JI2993",
         )
-        restored_b = next(
-            p for p in restored_plans if p["plan_id"] == "PLAN-B-SUBSTITUTE-OUTSOLE"
+        restored_substitute = next(
+            p
+            for p in restored_plans
+            if p["plan_type"] == "MATERIAL_SUBSTITUTION"
+            and p["evidence"]["material_id"] == "MAT-RUBBER-OUTSOLE"
         )
-        self.assertEqual(restored_b["decision"], "REJECTED")
+        self.assertEqual(restored_substitute["decision"], "REJECTED")
 
 
 if __name__ == "__main__":

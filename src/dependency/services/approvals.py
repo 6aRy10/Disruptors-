@@ -121,8 +121,8 @@ def list_approval_requests(
               action_type,action_payload,reason,requested_by,status,
               requested_at,decided_at,decided_by,decision_reason
             FROM approval_requests
-            WHERE (%s IS NULL OR status=%s)
-              AND (%s IS NULL OR incident_id=%s)
+            WHERE (%s::text IS NULL OR status=%s::text)
+              AND (%s::text IS NULL OR incident_id=%s::text)
             ORDER BY requested_at,request_id
             LIMIT %s
             """,

@@ -194,6 +194,9 @@ jobs:
       - name: Test unscripted event creates persisted investigation queue
         run: python -m unittest tests.test_live_investigation_db -v
 
+      - name: Test persisted evidence outreach drafts against PostgreSQL
+        run: python -m unittest tests.test_outreach_db -v
+
       - name: Test evidence outreach draft safety
         run: python -m unittest tests.test_outreach_drafts -v
 

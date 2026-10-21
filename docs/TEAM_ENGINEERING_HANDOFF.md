@@ -137,3 +137,30 @@ The PostgreSQL connection now refuses to silently switch when both
 `DEPENDENCY_DATABASE_TARGET=local` until the managed PostGIS database is
 populated and passes preflight. Use `DEPENDENCY_DATABASE_TARGET=aiven`
 **only** after verification. The database preflight never changes the target.
+
+## Supplier evidence draft pipeline — review required
+
+When a live event creates tasks, the control tower now offers
+`Prepare evidence request`. The server creates one durable draft per task,
+links an explicit `operational_contacts` record when available and returns
+`CONTACT_NOT_MODELED` otherwise. The question references the event and graph
+but **does not claim supplier damage**. No email/Slack message is sent by this
+action; sending needs a distinct, authorized workflow. When the operator later
+confirms a facility task, its draft is marked `EVIDENCE_RECORDED` in the same
+transaction as the state change. This is not automated authenticated supplier
+response ingestion and must not be described as such.
+
+## Aiven deployment: one physical topic
+
+The always-free Aiven Kafka service has a maximum of five Kafka topics. We
+use one physical topic, `dependency.events`, for all eleven distinct logical
+event types, with logical topic and outbox ID retained inside the envelope.
+The local data remains the authority. After Aiven service setup (outside the
+repository), configure TLS privately and run:
+
+```powershell
+python -m scripts.aiven_preflight --probe-kafka
+```
+
+Only `READY_TO_STREAM` establishes broker/topic reachability. Do not enable
+Kafka publishing or migrate PostgreSQL until the respective checks pass.

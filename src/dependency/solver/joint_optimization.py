@@ -11,6 +11,7 @@ from math import floor
 
 from dependency.solver.optimization import _MinCostFlow, _orders, _resource_candidates
 from dependency.services.facility_capacity import confirmed_capacity_for_scenario
+from dependency.solver.material_contention import evaluate_material_contention
 
 
 def optimize_joint_recovery(
@@ -183,18 +184,33 @@ def optimize_joint_recovery(
 
     if any(facility_used[k] > v for k, v in physical_caps.items()):
         raise AssertionError("Joint solver exceeded a shared physical cap.")
+    # This audit uses the same allocation chosen by the joint factory solver.
+    # Report modeled upstream conflicts; do not silently call the resulting
+    # allocation physically executable.
+    material_audit = evaluate_material_contention(allocations=selected)
     protected = sum(protected_by_sku.values())
     status = (
+        "MODELED_SHARED_MATERIAL_SHORTFALL"
+        if material_audit["modeled_capacity_conflicts"] else
         "SHORTAGE" if protected < total_demand else
-        "PROVISIONAL" if (provisional_used or unverified) else
+        "PROVISIONAL" if (
+            provisional_used or unverified
+            or not material_audit["execution_materials_verified"]
+        ) else
         "APPROVAL_REQUIRED" if approvals_needed else "FEASIBLE"
     )
-    verified = not unverified and not provisional_used and not approvals_needed
+    verified = (
+        not unverified and not provisional_used and not approvals_needed
+        and material_audit["execution_materials_verified"]
+    )
     return {
         "scenario_id": scenario_id,
         "state_version": next(iter(state_versions)),
         "skus": skus,
         "solver": "JOINT_DETERMINISTIC_MIN_COST_FLOW",
+        "shared_material_audit": material_audit,
+        "material_capacity_validated": material_audit["execution_materials_verified"],
+        "executable_as_proposed": verified and protected == total_demand,
         "status": status,
         "portfolio_allocation_verified": verified,
         "unverified_shared_capacity_facilities": sorted(unverified),
@@ -211,7 +227,8 @@ def optimize_joint_recovery(
         "protected_by_sku": dict(sorted(protected_by_sku.items())),
         "allocations": sorted(selected, key=lambda x: (x["sku"], x["order_id"], x["resource_id"])),
         "assumption": (
-            "Missing facility-wide confirmed capacity uses a conservative modeled bound. "
-            "This is a planning proposal, not authority to execute."
+            "Factory ceilings are jointly constrained; modeled shared-material "
+            "capacity is audited, not jointly optimized. Confirmed material source "
+            "quantities and human approval are required before execution."
         ),
     }

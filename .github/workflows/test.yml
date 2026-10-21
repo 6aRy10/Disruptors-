@@ -230,6 +230,9 @@ jobs:
       - name: Test dated confirmed facility-wide capacity
         run: python -m unittest tests.test_confirmed_facility_caps -v
 
+      - name: Test shared upstream material contention
+        run: python -m unittest tests.test_material_contention -v
+
       - name: Test joint portfolio capacity optimization
         run: python -m unittest tests.test_joint_optimization -v
 

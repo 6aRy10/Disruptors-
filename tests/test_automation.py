@@ -43,7 +43,12 @@ class AutomationOrchestratorTests(unittest.TestCase):
                 (outbox_id,),
             ).fetchone()
             incidents = conn.execute(
-                "SELECT COUNT(*) FROM incidents WHERE event_id=%s",
+                """
+                SELECT COUNT(*)
+                FROM incidents
+                WHERE event_id=%s
+                  AND status IN ('OPEN','INVESTIGATING')
+                """,
                 (self.EVENT_ID,),
             ).fetchone()[0]
             plans = conn.execute(
@@ -58,7 +63,12 @@ class AutomationOrchestratorTests(unittest.TestCase):
 
         with connect() as conn:
             incidents_after = conn.execute(
-                "SELECT COUNT(*) FROM incidents WHERE event_id=%s",
+                """
+                SELECT COUNT(*)
+                FROM incidents
+                WHERE event_id=%s
+                  AND status IN ('OPEN','INVESTIGATING')
+                """,
                 (self.EVENT_ID,),
             ).fetchone()[0]
         self.assertEqual(incidents_after, 1)

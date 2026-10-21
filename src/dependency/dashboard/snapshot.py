@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from dependency.db.connection import connect
-from dependency.graph.event_impact import trace_business_event_impact
+from dependency.graph.event_impact import (
+    PHYSICAL_EVENT_TYPES,
+    trace_business_event_impact,
+)
+from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.ingest.events import list_recent_events
 from dependency.memory.service import similar_incidents
@@ -17,6 +21,32 @@ ACTIVE_SUPPLIER_REQUEST_STATUSES = (
     "REPLY_RECEIVED",
     "PARSE_FAILED",
 )
+
+
+def _public_exposure(event_id: str | None, radius_km: float) -> list[dict]:
+    if not event_id:
+        return []
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT event_type,ST_Y(geom::geometry),ST_X(geom::geometry)
+            FROM external_events
+            WHERE event_id=%s
+            """,
+            (event_id,),
+        ).fetchone()
+    if (
+        not row
+        or row[0] not in PHYSICAL_EVENT_TYPES
+        or row[1] is None
+        or row[2] is None
+    ):
+        return []
+    return facilities_within_radius(
+        latitude=float(row[1]),
+        longitude=float(row[2]),
+        radius_km=radius_km,
+    )
 
 
 def _state_version() -> int:
@@ -195,6 +225,10 @@ def dashboard_snapshot(
     impact = None
     portfolio = None
     error = None
+    public_exposure = _public_exposure(
+        selected_event_id,
+        radius_km,
+    )
 
     if selected_event_id:
         try:
@@ -239,6 +273,7 @@ def dashboard_snapshot(
         "pending_approvals": len(pending_approvals),
         "approved_actions_waiting_execution": len(approved_unexecuted),
         "active_supplier_requests": len(supplier_requests),
+        "public_facilities_potentially_exposed": len(public_exposure),
         "selected_event_products": (
             len((impact or {}).get("products", []))
             if impact
@@ -272,6 +307,7 @@ def dashboard_snapshot(
             "event_id": selected_event_id,
             "scenario_id": selected_scenario_id,
             "radius_km": radius_km,
+            "public_exposure": public_exposure,
             "impact": impact,
             "portfolio": portfolio,
             "error": error,

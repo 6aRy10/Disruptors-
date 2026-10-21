@@ -32,6 +32,14 @@ class DashboardSnapshotTests(unittest.TestCase):
         )
         self.assertEqual(len(first["network"]["facilities"]), 770)
         self.assertEqual(
+            first["metrics"]["public_facilities_potentially_exposed"],
+            20,
+        )
+        self.assertEqual(
+            len(first["selected"]["public_exposure"]),
+            20,
+        )
+        self.assertEqual(
             first["selected"]["event_id"],
             "IDN-CIANJUR-2022-USGS-us7000ir9t",
         )

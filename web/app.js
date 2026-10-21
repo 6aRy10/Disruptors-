@@ -165,11 +165,16 @@ function renderMap() {
   const svg = $("networkMap");
   const facilities = state.snapshot?.network?.facilities || [];
   const impact = state.snapshot?.selected?.impact || {};
+  const publicExposure = state.snapshot?.selected?.public_exposure || [];
   const impactedOperational = new Set(
     (impact.facilities || []).map(row => row.facility_id).filter(Boolean)
   );
 
-  const selectedPublicIds = new Set();
+  const selectedPublicIds = new Set(
+    publicExposure
+      .map(row => row.network_facility_id)
+      .filter(Boolean)
+  );
   for (const row of facilities) {
     const ids = row.operational_facility_ids || [];
     if (ids.some(id => impactedOperational.has(id))) {
@@ -247,6 +252,7 @@ function renderSelectedEvent() {
     <div><strong>${esc(event.event_type)}</strong> · ${esc(event.source)}</div>
     <div>Occurred/effective: ${esc(event.occurred_or_effective_at || "unknown")}</div>
     <div>Exposure basis: ${esc(impact.exposure_basis || "—")}</div>
+    <div>Public facilities within investigation radius: ${number(state.snapshot?.metrics?.public_facilities_potentially_exposed || 0)}</div>
     <div>Status: ${esc(impact.exposure_status || "—")}</div>
   ` : "No event selected.";
 

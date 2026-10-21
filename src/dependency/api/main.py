@@ -13,6 +13,7 @@ from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
 from dependency.services.demo_reset import reset_demo_state
+from dependency.services.scenarios import confirm_event_facility_state
 from dependency.services.state_updates import (
     update_facility_state,
     update_inventory,
@@ -110,6 +111,23 @@ class SubstitutionApprovalUpdate(BaseModel):
     scenario_id: str | None = None
     sku: str | None = None
 
+
+
+
+class EventFacilityStateUpdate(BaseModel):
+    facility_ref: str
+    status: str
+    capacity_multiplier: float = Field(default=1.0, ge=0, le=1)
+    confirmed: bool = True
+    source_type: str = "PRIVATE_OPERATIONAL_CONFIRMATION"
+    reason: str
+
+
+class TariffImpactRequest(BaseModel):
+    customs_value_per_unit: float = Field(ge=0)
+    additional_rate: float = Field(ge=0)
+    units: int = Field(ge=0)
+    baseline_unit_margin: float
 
 class CapacityConfirmation(BaseModel):
     facility_id: str
@@ -378,6 +396,39 @@ def state_substitution(body: SubstitutionApprovalUpdate):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/events/{event_id}/operational-state")
+def event_operational_state(event_id: str, body: EventFacilityStateUpdate):
+    try:
+        result = confirm_event_facility_state(
+            event_id=event_id,
+            facility_ref=body.facility_ref,
+            status=body.status,
+            capacity_multiplier=body.capacity_multiplier,
+            confirmed=body.confirmed,
+            source_type=body.source_type,
+            reason=body.reason,
+        )
+        triage = triage_event(event_id=event_id, radius_km=150.0)
+        scenario_id = result["scenario"]["scenario_id"]
+        plans = {}
+        for product in triage.get("impacted_products", []):
+            sku = product["sku"]
+            try:
+                plans[sku] = generate_recovery_candidates(
+                    scenario_id=scenario_id,
+                    sku=sku,
+                )
+            except ValueError:
+                plans[sku] = []
+        return {
+            **result,
+            "triage": triage,
+            "recovery_candidates": plans,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/events/{event_id}/triage")
 def event_triage(
     event_id: str,
@@ -438,11 +489,11 @@ def memory_similar(event_type: str, limit: int = Query(default=5, ge=1, le=50)):
     }
 
 
-@app.get("/demo/tariff")
-def tariff_demo():
+@app.post("/analysis/tariff")
+def tariff_analysis(body: TariffImpactRequest):
     return tariff_impact(
-        customs_value_per_unit=60,
-        additional_rate=0.125,
-        units=2500,
-        baseline_unit_margin=47,
+        customs_value_per_unit=body.customs_value_per_unit,
+        additional_rate=body.additional_rate,
+        units=body.units,
+        baseline_unit_margin=body.baseline_unit_margin,
     )

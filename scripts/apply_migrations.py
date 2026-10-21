@@ -5,12 +5,17 @@ from pathlib import Path
 
 from dependency.db.connection import connect
 
-MIGRATION = Path(__file__).resolve().parents[1] / "sql" / "migrations" / "001_investigation_tasks.sql"
+MIGRATIONS = Path(__file__).resolve().parents[1] / "sql" / "migrations"
 
 
 def apply_migrations() -> None:
+    """Apply all additive schema upgrades in filename order, idempotently."""
+    files = sorted(MIGRATIONS.glob("*.sql"))
+    if not files:
+        raise RuntimeError("No SQL migration files found.")
     with connect() as conn:
-        conn.execute(MIGRATION.read_text(encoding="utf-8"))
+        for path in files:
+            conn.execute(path.read_text(encoding="utf-8"))
         conn.commit()
 
 

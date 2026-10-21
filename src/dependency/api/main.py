@@ -16,7 +16,10 @@ from dependency.data.scale_stats import enterprise_data_stats
 from dependency.agents.orchestrator import run_event_autopilot, run_incident_agents
 from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.incidents.triage import triage_event
-from dependency.investigation.tasks import list_investigation_tasks
+from dependency.investigation.tasks import (
+    list_investigation_tasks,
+    confirm_facility_investigation,
+)
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.event_impact import PHYSICAL_EVENT_TYPES, trace_business_event_impact
 from dependency.ingest.events import list_recent_events
@@ -174,6 +177,15 @@ class SubstitutionApprovalUpdate(BaseModel):
     sku: str | None = None
 
 
+
+
+class InvestigationFacilityConfirmation(BaseModel):
+    status: str
+    capacity_multiplier: float = Field(ge=0, le=1)
+    confirmed_by: str = Field(min_length=1, max_length=200)
+    evidence_source: str = Field(min_length=1, max_length=300)
+    evidence_reference: str = Field(min_length=1, max_length=1000)
+    reason: str = Field(min_length=1, max_length=2000)
 
 
 class EventFacilityStateUpdate(BaseModel):
@@ -338,6 +350,21 @@ def product_graph(sku: str):
         return product_dependency_graph(sku)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/investigations/tasks/{task_id}/confirm-facility")
+def confirm_investigation_facility(task_id: str, body: InvestigationFacilityConfirmation):
+    try:
+        return confirm_facility_investigation(
+            task_id=task_id,status=body.status,
+            capacity_multiplier=body.capacity_multiplier,
+            confirmed_by=body.confirmed_by,
+            evidence_source=body.evidence_source,
+            evidence_reference=body.evidence_reference,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/investigations/tasks")

@@ -435,6 +435,9 @@ CREATE TABLE IF NOT EXISTS incident_investigation_tasks (
     CHECK (status IN ('OPEN','RESOLVED','CANCELLED')),
   provenance_class text NOT NULL DEFAULT 'INFERRED'
     CHECK (provenance_class = 'INFERRED'),
+  resolution_json jsonb,
+  resolved_at timestamptz,
+  resolved_by text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(incident_id, task_key)

@@ -246,12 +246,24 @@ def plan_event_recovery(
         for p in products
     )
 
+    shared_resource_conflicts = _shared_backup_conflicts(products)
+    # Each SKU is optimized independently. Competing backup facility choices
+    # are not globally capacity-reserved, so the portfolio must not be marked
+    # executable until a shared-resource allocation is validated.
     if total_shortage > 0:
         portfolio_status = "SHORTAGE"
     elif requires_confirmation:
         portfolio_status = "PROVISIONAL"
+    elif shared_resource_conflicts:
+        portfolio_status = "SHARED_CAPACITY_VALIDATION_REQUIRED"
     else:
         portfolio_status = "FEASIBLE"
+
+    shared_capacity_validation_required = bool(shared_resource_conflicts)
+    portfolio_allocation_verified = (
+        len(operational) <= 1
+        and not shared_capacity_validation_required
+    )
 
     versions = sorted({p["state_version"] for p in products})
     return {
@@ -286,7 +298,15 @@ def plan_event_recovery(
         "products": products,
         "action_queue": action_queue,
         "rejected_actions": rejected_actions,
-        "shared_resource_conflicts": _shared_backup_conflicts(products),
+        "shared_resource_conflicts": shared_resource_conflicts,
+        "shared_capacity_validation_required": shared_capacity_validation_required,
+        "portfolio_allocation_verified": portfolio_allocation_verified,
+        "portfolio_allocation_claim": (
+            "Independent per-SKU optimization only. Shared-resource limits "
+            "need a joint allocation before this portfolio can be executed."
+            if not portfolio_allocation_verified
+            else "At most one operationally affected SKU; no inter-SKU conflict."
+        ),
         "ranking_rule": (
             "shortage first; feasible before conditional; then higher risk, "
             "higher margin at risk, earlier due date, and candidate score"

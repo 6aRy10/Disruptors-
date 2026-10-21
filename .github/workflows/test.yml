@@ -146,6 +146,9 @@ jobs:
       - name: Test enterprise-scale private twin
         run: python -m unittest tests.test_enterprise_scale -v
 
+      - name: Test shared backup portfolio safety
+        run: python -m unittest tests.test_shared_backup_safety -v
+
       - name: Test portfolio recovery
         run: python -m unittest tests.test_portfolio -v
 

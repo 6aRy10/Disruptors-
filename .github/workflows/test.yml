@@ -194,8 +194,22 @@ jobs:
       - name: Rehearsal checkpoint - supplier capacity confirmation
         run: python scripts/rehearse_control_loop.py --stop-after-stage 4
 
-      - name: Rehearsal checkpoint - direct replan without event worker
-        run: python scripts/rehearse_control_loop.py --stop-after-stage 5 --skip-event-worker
+      - name: Capture post-confirmation recovery error
+        id: replan_probe
+        shell: bash
+        run: |
+          if python scripts/rehearse_control_loop.py --stop-after-stage 5 --skip-event-worker > /tmp/dependency-replan.log 2>&1; then
+            echo "result=PASS" >> "$GITHUB_OUTPUT"
+            echo "reason=NONE" >> "$GITHUB_OUTPUT"
+          else
+            tail -n 35 /tmp/dependency-replan.log
+            reason=$(tail -n 1 /tmp/dependency-replan.log | tr -cd '[:alnum:] _.,:=-' | cut -c 1-150)
+            echo "result=FAIL" >> "$GITHUB_OUTPUT"
+            echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Post-confirmation exception ${{ steps.replan_probe.outputs.reason }}"
+        run: test "${{ steps.replan_probe.outputs.result }}" = PASS
 
       - name: Rehearsal checkpoint - post-confirmation replanning
         run: python scripts/rehearse_control_loop.py --stop-after-stage 5

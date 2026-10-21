@@ -17,6 +17,8 @@ from dependency.events.bus import (
     TOPIC_SUPPLIER_CONFIRMATION_REPLY,
     TOPIC_SUPPLIER_CONFIRMATION_REQUESTED,
     _kafka_config,
+    kafka_routing_mode,
+    physical_topic_for,
 )
 
 
@@ -33,6 +35,12 @@ DEFAULT_TOPICS = (
     TOPIC_DECISION_CONFIRMED,
     TOPIC_ACTION_EXECUTED,
 )
+
+
+def kafka_subscription_topics() -> tuple[str, ...]:
+    if kafka_routing_mode() == "logical":
+        return DEFAULT_TOPICS
+    return (physical_topic_for(TOPIC_EXTERNAL_EVENTS),)
 
 
 def kafka_consumer_config(
@@ -75,7 +83,7 @@ def decode_envelope(raw_value: bytes | str) -> dict:
 
 def run_kafka_consumer(
     *,
-    topics: tuple[str, ...] = DEFAULT_TOPICS,
+    topics: tuple[str, ...] | None = None,
     consumer_name: str = DEFAULT_CONSUMER,
     run_agents: bool = False,
     radius_km: float = 150.0,
@@ -92,7 +100,7 @@ def run_kafka_consumer(
         raise RuntimeError("confluent-kafka is not installed.") from exc
 
     consumer = Consumer(kafka_consumer_config())
-    consumer.subscribe(list(topics))
+    consumer.subscribe(list(topics if topics is not None else kafka_subscription_topics()))
 
     try:
         while True:

@@ -101,3 +101,19 @@ passes read-only PostGIS/size checks. If the local database requires more than
 1 GB, evaluate the trial paid PostgreSQL instead of truncating the twin.
 The user must create the services in their own Aiven console; this repo cannot
 and must not provision using credentials stored in GitHub.
+
+## Free Kafka topic ceiling — addressed in transport
+
+Official Aiven Free Kafka limit: **five physical topics**, two partitions per
+topic. Dependency defines eleven logical topics. All logical event types now
+travel through one physical Kafka topic, `dependency.events` (default).
+The original logical topic, event key, outbox ID and payload remain in the
+message envelope. Idempotency and action logic remain unchanged.
+
+Create ONE topic named `dependency.events` in the Aiven Console.
+`AIVEN_KAFKA_ROUTING_MODE=single` and
+`AIVEN_KAFKA_PHYSICAL_TOPIC=dependency.events` are the defaults.
+Only paid Kafka clusters with enough topic quota should use optional
+`AIVEN_KAFKA_ROUTING_MODE=logical` compatibility mode.
+
+https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier

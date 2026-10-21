@@ -127,6 +127,9 @@ jobs:
       - name: Test operational memory
         run: python -m unittest tests.test_memory -v
 
+      - name: Test single-topic free Kafka routing
+        run: python -m unittest tests.test_kafka_free_routing -v
+
       - name: Test transactional event bus
         run: python -m unittest tests.test_event_bus -v
 

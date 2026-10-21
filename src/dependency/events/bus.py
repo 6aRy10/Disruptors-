@@ -19,6 +19,25 @@ TOPIC_DECISION_CONFIRMED = "decision.confirmed"
 TOPIC_ACTION_EXECUTED = "action.executed"
 
 
+def kafka_routing_mode() -> str:
+    """Use one physical topic by default to fit the free Aiven Kafka limit."""
+    mode = os.getenv("AIVEN_KAFKA_ROUTING_MODE", "single").strip().lower()
+    if mode not in {"single", "logical"}:
+        raise ValueError("AIVEN_KAFKA_ROUTING_MODE must be single or logical.")
+    return mode
+
+
+def physical_topic_for(logical_topic: str) -> str:
+    if not logical_topic or not logical_topic.strip():
+        raise ValueError("Logical topic must be provided.")
+    if kafka_routing_mode() == "logical":
+        return logical_topic
+    topic = os.getenv("AIVEN_KAFKA_PHYSICAL_TOPIC", "dependency.events").strip()
+    if not topic or len(topic) > 249:
+        raise ValueError("Invalid Kafka physical topic.")
+    return topic
+
+
 def enqueue_outbox(conn, *, topic: str, event_key: str, payload: dict) -> str:
     """Write an event to the transactional outbox using an existing DB connection."""
     outbox_id = f"OUT-{uuid4()}"
@@ -143,7 +162,7 @@ def flush_to_kafka(limit: int = 100) -> dict:
 
     for row in rows:
         producer.produce(
-            row["topic"],
+            physical_topic_for(row["topic"]),
             key=row["event_key"].encode("utf-8"),
             value=json.dumps(
                 build_event_envelope(row),

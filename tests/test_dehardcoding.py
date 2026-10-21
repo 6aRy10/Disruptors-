@@ -1,13 +1,136 @@
 import unittest
+from pathlib import Path
 
+from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
 from dependency.solver.candidates import generate_recovery_candidates
+from dependency.solver.recovery import plan_sku_recovery
+
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src" / "dependency"
+
+BANNED_PRODUCTION_LITERALS = (
+    "JI2993",
+    "JQ6656",
+    "SCN-CIANJUR-REPLAY-01",
+    "IDN-CIANJUR-2022-USGS-us7000ir9t",
+    "ADI26-0240",
+    "hwa_capacity",
+    "hwa_committed",
+)
 
 
 class DehardcodingTests(unittest.TestCase):
     SCENARIO_ID = "SCN-CIANJUR-REPLAY-01"
+    SCALE_SCENARIO = "TEST-SCALE-GENERALIZATION"
+    SCALE_EVENT = "TEST-SCALE-GENERALIZATION-EVENT"
+    SCALE_SKU = "DTSKU-00001"
 
-    def test_recovery_candidates_are_discovered_for_second_sku(self):
+    def setUp(self):
+        with connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO external_events(
+                  event_id,event_type,mode,source,title,
+                  occurred_or_effective_at,current_as_of,raw_json,
+                  provenance_class
+                ) VALUES (
+                  %s,'test_disruption','REPLAY','TEST',
+                  'Generic de-hardcoding test event',
+                  '2026-10-21T00:00:00Z','2026-10-21','{}'::jsonb,
+                  'SIMULATED_PRIVATE'
+                )
+                ON CONFLICT (event_id) DO NOTHING
+                """,
+                (self.SCALE_EVENT,),
+            )
+            conn.execute(
+                """
+                INSERT INTO scenarios(
+                  scenario_id,event_id,name,mode,as_of,provenance_class,note
+                ) VALUES (
+                  %s,%s,'Generic generated-SKU scenario','REPLAY',
+                  '2026-10-21','SIMULATED_PRIVATE',
+                  'Test-only scenario proving the solver is not tied to Cianjur.'
+                )
+                ON CONFLICT (scenario_id) DO NOTHING
+                """,
+                (self.SCALE_SCENARIO, self.SCALE_EVENT),
+            )
+            primary = conn.execute(
+                """
+                SELECT pf.facility_id
+                FROM product_facilities pf
+                WHERE pf.sku=%s
+                  AND pf.role='primary_assembly'
+                ORDER BY pf.facility_id
+                LIMIT 1
+                """,
+                (self.SCALE_SKU,),
+            ).fetchone()
+            if not primary:
+                raise AssertionError("Generated scale SKU has no primary facility.")
+            self.scale_primary = primary[0]
+            conn.execute(
+                """
+                INSERT INTO scenario_facility_state(
+                  scenario_id,facility_id,status,capacity_multiplier,confirmed,
+                  source_type,reason,provenance_class
+                ) VALUES (
+                  %s,%s,'UNAVAILABLE',0,true,'TEST',
+                  'Generic primary unavailable for de-hardcoding test.',
+                  'SIMULATED_PRIVATE'
+                )
+                ON CONFLICT (scenario_id,facility_id) DO UPDATE SET
+                  status='UNAVAILABLE',
+                  capacity_multiplier=0,
+                  confirmed=true,
+                  source_type='TEST',
+                  reason='Generic primary unavailable for de-hardcoding test.',
+                  provenance_class='SIMULATED_PRIVATE'
+                """,
+                (self.SCALE_SCENARIO, self.scale_primary),
+            )
+            conn.commit()
+
+    def tearDown(self):
+        with connect() as conn:
+            conn.execute(
+                "DELETE FROM fulfilment_commitments WHERE commitment_id='TEST-DYNAMIC-DEMAND'"
+            )
+            conn.execute(
+                "DELETE FROM scenario_facility_state WHERE scenario_id=%s",
+                (self.SCALE_SCENARIO,),
+            )
+            conn.execute(
+                "DELETE FROM scenarios WHERE scenario_id=%s",
+                (self.SCALE_SCENARIO,),
+            )
+            conn.execute(
+                "DELETE FROM external_events WHERE event_id=%s",
+                (self.SCALE_EVENT,),
+            )
+            conn.commit()
+
+    def test_production_source_contains_no_flagship_ids(self):
+        offenders = []
+        for path in SRC.rglob("*.py"):
+            text = path.read_text(encoding="utf-8")
+            for literal in BANNED_PRODUCTION_LITERALS:
+                if literal in text:
+                    offenders.append(
+                        f"{path.relative_to(ROOT)} contains {literal}"
+                    )
+
+        self.assertEqual(
+            offenders,
+            [],
+            "Flagship fixture identifiers leaked into production logic:\n"
+            + "\n".join(offenders),
+        )
+
+    def test_recovery_candidates_are_discovered_for_second_flagship_sku(self):
         plans = generate_recovery_candidates(
             scenario_id=self.SCENARIO_ID,
             sku="JQ6656",
@@ -33,6 +156,143 @@ class DehardcodingTests(unittest.TestCase):
         self.assertIn("JQ6656", skus)
         self.assertEqual(result["scenario_id"], self.SCENARIO_ID)
         self.assertTrue(result["recovery_ready"])
+
+    def test_generated_sku_uses_same_recovery_engine(self):
+        plan = plan_sku_recovery(
+            scenario_id=self.SCALE_SCENARIO,
+            sku=self.SCALE_SKU,
+            release_safety_stock=False,
+        )
+        candidates = generate_recovery_candidates(
+            scenario_id=self.SCALE_SCENARIO,
+            sku=self.SCALE_SKU,
+        )
+
+        self.assertEqual(plan["sku"], self.SCALE_SKU)
+        self.assertGreater(plan["demand_units"], 0)
+        self.assertNotEqual(plan["demand_units"], 9500)
+        self.assertGreater(plan["lost_primary_units"], 0)
+        self.assertGreaterEqual(len(plan["backup_candidates"]), 2)
+        self.assertTrue(
+            any(
+                row["plan_type"] == "ASSEMBLY_REALLOCATION"
+                for row in candidates
+            )
+        )
+
+    def test_demand_change_changes_plan_without_code_change(self):
+        baseline = plan_sku_recovery(
+            scenario_id=self.SCALE_SCENARIO,
+            sku=self.SCALE_SKU,
+            release_safety_stock=False,
+        )
+
+        with connect() as conn:
+            product = conn.execute(
+                """
+                SELECT standard_unit_revenue_eur,standard_unit_margin_eur
+                FROM products
+                WHERE sku=%s
+                """,
+                (self.SCALE_SKU,),
+            ).fetchone()
+            conn.execute(
+                """
+                INSERT INTO fulfilment_commitments(
+                  commitment_id,customer_or_market,market,sku,qty,due_date,
+                  unit_revenue_eur,revenue_eur,unit_margin_eur,gross_margin_eur,
+                  priority,partial_allowed,provenance_class
+                ) VALUES (
+                  'TEST-DYNAMIC-DEMAND','Adversarial test customer','Europe',
+                  %s,777,'2026-11-01',%s,%s,%s,%s,1,true,
+                  'SIMULATED_PRIVATE'
+                )
+                """,
+                (
+                    self.SCALE_SKU,
+                    product[0],
+                    float(product[0]) * 777,
+                    product[1],
+                    float(product[1]) * 777,
+                ),
+            )
+            conn.commit()
+
+        changed = plan_sku_recovery(
+            scenario_id=self.SCALE_SCENARIO,
+            sku=self.SCALE_SKU,
+            release_safety_stock=False,
+        )
+
+        self.assertEqual(
+            changed["demand_units"],
+            baseline["demand_units"] + 777,
+        )
+
+    def test_capacity_change_changes_generated_sku_recovery(self):
+        baseline = plan_sku_recovery(
+            scenario_id=self.SCALE_SCENARIO,
+            sku=self.SCALE_SKU,
+            release_safety_stock=False,
+        )
+
+        with connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT sc.facility_id,sc.week_start,sc.capacity_units,
+                       sc.committed_units
+                FROM supplier_capacity sc
+                JOIN product_facilities pf
+                  ON pf.facility_id=sc.facility_id
+                 AND pf.sku=sc.sku
+                WHERE sc.sku=%s
+                  AND pf.role <> 'primary_assembly'
+                ORDER BY sc.facility_id,sc.week_start
+                """,
+                (self.SCALE_SKU,),
+            ).fetchall()
+            self.assertGreaterEqual(len(rows), 2)
+
+            for row in rows:
+                conn.execute(
+                    """
+                    UPDATE supplier_capacity
+                    SET capacity_units=committed_units + 10
+                    WHERE facility_id=%s AND sku=%s AND week_start=%s
+                    """,
+                    (row[0], self.SCALE_SKU, row[1]),
+                )
+            conn.commit()
+
+        try:
+            constrained = plan_sku_recovery(
+                scenario_id=self.SCALE_SCENARIO,
+                sku=self.SCALE_SKU,
+                release_safety_stock=False,
+            )
+            self.assertLessEqual(constrained["backup_available_units"], 10.0)
+            self.assertGreaterEqual(
+                constrained["shortage_units"],
+                baseline["shortage_units"],
+            )
+        finally:
+            with connect() as conn:
+                for row in rows:
+                    conn.execute(
+                        """
+                        UPDATE supplier_capacity
+                        SET capacity_units=%s,committed_units=%s
+                        WHERE facility_id=%s AND sku=%s AND week_start=%s
+                        """,
+                        (
+                            row[2],
+                            row[3],
+                            row[0],
+                            self.SCALE_SKU,
+                            row[1],
+                        ),
+                    )
+                conn.commit()
 
 
 if __name__ == "__main__":

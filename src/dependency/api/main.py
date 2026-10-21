@@ -155,7 +155,7 @@ def supplier_capacity_confirm(body: CapacityConfirmation):
 def tariff_demo():
     return tariff_impact(
         customs_value_per_unit=60,
-        additional_rate=0.20,
+        additional_rate=0.125,
         units=2500,
         baseline_unit_margin=47,
     )

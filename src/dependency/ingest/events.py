@@ -6,16 +6,25 @@ from datetime import UTC, datetime
 from dependency.db.connection import connect
 
 
-def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
+def _parse_occurred_at(event: dict):
     occurred_ms = event.get("occurred_at_epoch_ms")
-    occurred_at = (
-        datetime.fromtimestamp(float(occurred_ms) / 1000.0, tz=UTC)
-        if occurred_ms is not None
-        else None
-    )
+    if occurred_ms is not None:
+        return datetime.fromtimestamp(float(occurred_ms) / 1000.0, tz=UTC)
+
+    occurred_iso = event.get("occurred_at_iso")
+    if occurred_iso:
+        text = str(occurred_iso).replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(text)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+    return None
+
+
+def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
+    occurred_at = _parse_occurred_at(event)
     ingested_at = datetime.now(UTC)
     source_url = event.get("detail_url")
-    title = event.get("place") or event.get("event_id")
+    title = event.get("title") or event.get("place") or event.get("event_id")
 
     with connect() as conn:
         existed = conn.execute(

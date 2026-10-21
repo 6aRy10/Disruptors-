@@ -1,6 +1,6 @@
 lane_id,origin_facility_id,port_unlocode,port_name,destination_market,mode,transit_days,cost_eur_per_unit,status,policy_tag,provenance_class,note
 LANE-ID-JKT-EU,ADI26-0226,IDJKT,Tanjung Priok / Jakarta,Europe,ocean,29,3.2,open,,SIMULATED_PRIVATE,Main Indonesia product export lane.
-LANE-VN-HPH-NA,ADI26-0683,VNHPH,Hai Phong,North America,ocean,27,2.9,open,VNM_US_RECIPROCAL,SIMULATED_PRIVATE,Vietnam-origin U.S./North America demo route; tariff applicability determined by private classification flag.
-LANE-VN-SGN-NA,ADI26-0372,VNSGN,Ho Chi Minh City,North America,ocean,25,2.8,open,VNM_US_RECIPROCAL,SIMULATED_PRIVATE,Apparel U.S./North America demo route.
+LANE-VN-HPH-NA,ADI26-0683,VNHPH,Hai Phong,North America,ocean,27,2.9,open,VNM_US_SECTION301_2026,SIMULATED_PRIVATE,Vietnam-origin U.S. demo route; tariff applicability still requires product classification and exemption check.
+LANE-VN-SGN-NA,ADI26-0372,VNSGN,Ho Chi Minh City,North America,ocean,25,2.8,open,VNM_US_SECTION301_2026,SIMULATED_PRIVATE,Apparel U.S. demo route; tariff applicability still requires product classification and exemption check.
 LANE-CN-YTN-NA-1,ADI26-0083,CNYTN,Yantian,North America,ocean,22,2.6,disrupted_in_2021_replay,,SIMULATED_PRIVATE,Yantian disruption public; route assignment private demo data.
 LANE-CN-YTN-EU-1,ADI26-0085,CNYTN,Yantian,Europe,ocean,28,2.8,disrupted_in_2021_replay,,SIMULATED_PRIVATE,Yantian disruption public; route assignment private demo data.

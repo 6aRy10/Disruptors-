@@ -1,127 +1,161 @@
 from __future__ import annotations
-import csv
-from pathlib import Path
-from fastapi import FastAPI
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from dependency.state import DemoState
-from dependency.supplier_confirmations import parse_supplier_reply
-from dependency.solver.allocation import Order, allocate_orders, summarize
-from dependency.solver.feasibility import check_plan
+from dependency.db.connection import connect, postgis_version
+from dependency.graph.exposure import facilities_within_radius
+from dependency.graph.impact import trace_event_impact
+from dependency.ingest.events import list_recent_events
+from dependency.services.capacity import confirm_supplier_capacity
+from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.tariff import tariff_impact
+from dependency.supplier_confirmations import parse_supplier_reply
 
-app = FastAPI(title="Dependency API", version="1.0.0-pre-github")
-state = DemoState()
-ORDERS = [
-    Order("ORD-JI-EU", 4000, 130, 55, 1),
-    Order("ORD-JI-NA", 3000, 130, 50, 2),
-    Order("ORD-JI-GC", 2500, 130, 52, 3),
-]
-FINISHED = 2100
-CONFIG = Path(__file__).resolve().parents[3] / "config"
+app = FastAPI(
+    title="Disruptors Dependency API",
+    version="0.2.0",
+    description="Event-to-exposure-to-recovery API backed by PostgreSQL/PostGIS.",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-class Reply(BaseModel):
+class SupplierReply(BaseModel):
     text: str
 
 
-class Confirm(BaseModel):
+class CapacityConfirmation(BaseModel):
+    facility_id: str
+    sku: str
     capacity_units: int = Field(ge=0)
-    effective_until: str | None = None
-
-
-def plan():
-    available = FINISHED + state.hwa_available
-    result = summarize(allocate_orders(ORDERS, available))
-    result.update(
-        {
-            "state_version": state.version,
-            "available_units": available,
-            "feasibility": check_plan(
-                required_units=9500,
-                finished_units=FINISHED,
-                assembly_units=state.hwa_available,
-            ),
-        }
-    )
-    return result
-
-
-def ji_risk_score():
-    return 90 if state.supplier_confirmed and state.hwa_capacity <= 5500 else 82
-
-
-def load_events():
-    with (CONFIG / "risk_events.csv").open(newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    integerish = {"rank", "radius_km"}
-    numeric = {
-        "rank",
-        "radius_km",
-        "business_risk_score",
-        "disruption_severity",
-        "dependency_criticality",
-        "time_urgency",
-        "commercial_exposure",
-        "recovery_difficulty",
-        "evidence_confidence",
-    }
-    for row in rows:
-        for key in numeric:
-            if key in row and row[key] not in {"", None}:
-                row[key] = int(float(row[key])) if key in integerish else float(row[key])
-    return sorted(rows, key=lambda r: r["rank"])
+    valid_until: str | None = None
+    source_channel: str = "Slack Connect"
+    raw_message: str | None = None
+    scenario_id: str | None = None
+    release_safety_stock: bool = False
 
 
 @app.get("/health")
 def health():
-    return {"ok": True, "state_version": state.version}
+    with connect() as conn:
+        version = conn.execute(
+            "SELECT version FROM operational_state_version WHERE singleton = true"
+        ).fetchone()[0]
+        db_version = conn.execute("SHOW server_version").fetchone()[0]
 
-
-@app.get("/demo/events")
-def events():
-    return {"events": load_events()}
-
-
-@app.get("/demo/plan")
-def get_plan():
-    return plan()
-
-
-@app.get("/demo/risk")
-def get_risk():
-    score = ji_risk_score()
     return {
-        "object_type": "product",
-        "object_id": "JI2993",
-        "risk_score": score,
-        "band": "CRITICAL" if score >= 70 else "HIGH",
+        "ok": True,
+        "database": "postgresql",
+        "postgres_version": db_version,
+        "postgis_version": postgis_version(),
+        "state_version": int(version),
     }
 
 
+@app.get("/events")
+def events(limit: int = Query(default=50, ge=1, le=500)):
+    return {"events": list_recent_events(limit=limit)}
+
+
+@app.get("/events/{event_id}/exposure")
+def event_exposure(
+    event_id: str,
+    radius_km: float = Query(default=100.0, gt=0, le=1000),
+):
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT ST_Y(geom::geometry), ST_X(geom::geometry)
+            FROM external_events
+            WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Event not found.")
+
+    facilities = facilities_within_radius(
+        latitude=float(row[0]),
+        longitude=float(row[1]),
+        radius_km=radius_km,
+    )
+    return {
+        "event_id": event_id,
+        "radius_km": radius_km,
+        "exposure_status": "POTENTIAL_ONLY",
+        "facilities": facilities,
+    }
+
+
+@app.get("/events/{event_id}/impact")
+def event_impact(
+    event_id: str,
+    radius_km: float = Query(default=100.0, gt=0, le=1000),
+):
+    return trace_event_impact(event_id=event_id, radius_km=radius_km)
+
+
+@app.get("/scenarios/{scenario_id}/recovery/{sku}")
+def scenario_recovery(
+    scenario_id: str,
+    sku: str,
+    release_safety_stock: bool = False,
+):
+    try:
+        return plan_sku_recovery(
+            scenario_id=scenario_id,
+            sku=sku,
+            release_safety_stock=release_safety_stock,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/suppliers/capacity/parse")
+def supplier_capacity_parse(body: SupplierReply):
+    return parse_supplier_reply(body.text)
+
+
+@app.post("/suppliers/capacity/confirm")
+def supplier_capacity_confirm(body: CapacityConfirmation):
+    update = confirm_supplier_capacity(
+        facility_id=body.facility_id,
+        sku=body.sku,
+        capacity_units=body.capacity_units,
+        valid_until=body.valid_until,
+        source_channel=body.source_channel,
+        raw_message=body.raw_message,
+    )
+
+    response = {"update": update}
+    if body.scenario_id:
+        response["replan"] = plan_sku_recovery(
+            scenario_id=body.scenario_id,
+            sku=body.sku,
+            release_safety_stock=body.release_safety_stock,
+        )
+    return response
+
+
 @app.get("/demo/tariff")
-def get_tariff_demo():
+def tariff_demo():
     return tariff_impact(
         customs_value_per_unit=60,
         additional_rate=0.20,
         units=2500,
         baseline_unit_margin=47,
     )
-
-
-@app.post("/demo/supplier/parse-reply")
-def parse_reply(body: Reply):
-    return parse_supplier_reply(body.text)
-
-
-@app.post("/demo/supplier/confirm")
-def confirm(body: Confirm):
-    version = state.confirm_capacity(body.capacity_units)
-    return {"confirmed": True, "state_version": version, "risk": get_risk(), "plan": plan()}
-
-
-@app.post("/demo/reset")
-def reset():
-    global state
-    state = DemoState()
-    return {"ok": True, "state_version": state.version}

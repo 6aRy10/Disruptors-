@@ -169,3 +169,30 @@ Inspect them at `GET /investigations/tasks` or under "Missing evidence and next
 actions" on `/dashboard`. These are investigation tasks, **not** outbound
 supplier messages or confirmed shutdowns. A separate authorized workflow must
 confirm new operational state.
+
+## Complete live evidence-to-recovery confirmation
+
+After pulling updates, apply the non-destructive migrations once:
+
+```powershell
+python -m scripts.apply_migrations
+```
+
+A real event that reaches a linked product now creates investigation tasks.
+Open `/dashboard` to see the tasks and use the operator confirmation control
+only when **separate private evidence** exists. The protected endpoint is:
+
+`POST /investigations/tasks/{task_id}/confirm-facility`
+
+Required fields: status, capacity_multiplier, confirmed_by, evidence_source,
+evidence_reference and reason. Only a `CONFIRM_FACILITY_STATUS` task can use
+this endpoint. All fields are persisted with `SIMULATED_PRIVATE` provenance;
+it is not real supplier authentication. One database transaction creates or
+reuses the scenario, updates confirmed facility status, resolves the task,
+records incident evidence, advances the state version and queues joint
+replanning. Duplicate confirmations do not change state again. The incident
+ID remains the same from initial live exposure through recovery.
+
+The worker `python -m scripts.run_live_stack` processes outbox updates.
+Do not reset seeded data while the team is testing. Do not claim the supplier
+was actually damaged without private confirmation.

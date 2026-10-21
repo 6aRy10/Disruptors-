@@ -172,6 +172,9 @@ jobs:
       - name: Test unified live ingestion and orchestration
         run: python -m unittest tests.test_live_stack -v
 
+      - name: Test real database event evidence confirmation and replanning
+        run: python -m unittest tests.test_live_evidence_to_recovery -v
+
       - name: Test unscripted event creates persisted investigation queue
         run: python -m unittest tests.test_live_investigation_db -v
 

@@ -342,6 +342,18 @@ CREATE INDEX IF NOT EXISTS event_outbox_pending_idx
   ON event_outbox(created_at)
   WHERE published_at IS NULL;
 
+CREATE TABLE IF NOT EXISTS event_consumptions (
+  consumer_name text NOT NULL,
+  outbox_id text NOT NULL REFERENCES event_outbox(outbox_id) ON DELETE CASCADE,
+  status text NOT NULL,
+  processed_at timestamptz NOT NULL DEFAULT now(),
+  result_json jsonb,
+  error_text text,
+  PRIMARY KEY(consumer_name, outbox_id)
+);
+CREATE INDEX IF NOT EXISTS event_consumptions_status_idx
+  ON event_consumptions(consumer_name, status, processed_at);
+
 CREATE TABLE IF NOT EXISTS incidents (
   incident_id text PRIMARY KEY,
   event_id text REFERENCES external_events(event_id),

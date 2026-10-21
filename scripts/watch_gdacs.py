@@ -5,7 +5,6 @@ import time
 
 from dependency.graph.exposure import facilities_within_radius
 from dependency.ingest.events import upsert_external_event
-from dependency.incidents.triage import triage_event
 from dependency.ingest.gdacs import normalize, recent_events
 
 
@@ -51,15 +50,7 @@ def poll_once(
                     f"{facility['name']}"
                 )
             if stored["created"]:
-                incident = triage_event(
-                    event_id=event["event_id"],
-                    radius_km=radius_km,
-                )
-                if incident.get("incident"):
-                    print(
-                        f"  incident: {incident['incident']['incident_id']} | "
-                        f"{incident['status']}"
-                    )
+                print("  queued: external.events -> incident orchestrator")
         elif stored["created"]:
             print(
                 f"stored {event['event_id']} | {event['event_type']} | "

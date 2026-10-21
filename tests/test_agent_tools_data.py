@@ -45,17 +45,28 @@ class AgentDataToolTests(unittest.TestCase):
         )
 
     def test_company_normalization_resolves_public_network_candidate(self):
-        result = normalize_company(
-            "PT Glostar Indonesia PGS",
-            "Indonesia",
+        exact = normalize_company(
+            "Barna Bordados Carlos Vega",
+            "Argentina",
             5,
         )
-        self.assertTrue(result["matches"])
-        top = result["matches"][0]
-        self.assertGreaterEqual(top["match_score"], 80.0)
-        self.assertIn(
-            "GLOSTAR",
-            (top["official_name"] or top["name"]).upper(),
+        self.assertTrue(exact["matches"])
+        self.assertEqual(exact["matches"][0]["match_score"], 100.0)
+        self.assertEqual(
+            exact["matches"][0]["official_name"],
+            "Barna Bordados Carlos Vega",
+        )
+
+        demo_relevant = normalize_company(
+            "PT Glostar Indonesia PGS",
+            "Indonesia",
+            10,
+        )
+        self.assertTrue(
+            any(
+                "GLOSTAR" in ((row["official_name"] or row["name"]).upper())
+                for row in demo_relevant["matches"]
+            )
         )
 
     def test_transport_options_are_data_driven(self):

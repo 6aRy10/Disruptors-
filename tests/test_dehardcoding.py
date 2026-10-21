@@ -247,6 +247,36 @@ class DehardcodingTests(unittest.TestCase):
         self.assertIsNotNone(row[2])
         self.assertGreater(int(row[3]), 0)
 
+    def test_generated_facility_has_public_network_link(self):
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                  f.facility_id,
+                  l.network_facility_id,
+                  ST_Distance(f.geom,nf.geom)
+                FROM facilities f
+                JOIN facility_network_links l
+                  ON l.facility_id=f.facility_id
+                JOIN network_facilities nf
+                  ON nf.network_facility_id=l.network_facility_id
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM product_facilities pf
+                    WHERE pf.facility_id=f.facility_id
+                      AND pf.sku LIKE 'DTSKU-%'
+                  )
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+
+        self.assertIsNotNone(row)
+        self.assertTrue(row[0].startswith("DTF-A-"))
+        self.assertIsNotNone(row[1])
+        self.assertLess(float(row[2]), 1.0)
+
     def test_arbitrary_new_event_finds_generated_facility_geospatially(self):
         event_id = "TEST-ARBITRARY-SCALE-GEO"
         fixture = self._insert_scale_earthquake(event_id)

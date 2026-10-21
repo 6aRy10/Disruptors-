@@ -81,6 +81,19 @@ CREATE TABLE IF NOT EXISTS material_sources (
   PRIMARY KEY(material_id, facility_id)
 );
 
+-- Exact source-of-supply edge. A material source does not automatically feed every SKU
+-- that uses the same material. This table links a source to the consuming assembly site/SKU.
+CREATE TABLE IF NOT EXISTS material_allocations (
+  material_id text REFERENCES materials(material_id),
+  source_facility_id text REFERENCES facilities(facility_id),
+  destination_facility_id text REFERENCES facilities(facility_id),
+  sku text REFERENCES products(sku),
+  approved boolean NOT NULL DEFAULT true,
+  allocation_share numeric CHECK (allocation_share >= 0 AND allocation_share <= 1),
+  provenance_class text NOT NULL,
+  PRIMARY KEY(material_id, source_facility_id, destination_facility_id, sku)
+);
+
 CREATE TABLE IF NOT EXISTS inventory (
   site_id text,
   item_type text,

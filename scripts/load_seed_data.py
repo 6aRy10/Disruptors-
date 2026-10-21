@@ -133,6 +133,24 @@ def load() -> None:
                 (r["material_id"], r["facility_id"], r["role"], boolean(r["approved"]), integer(r["lead_time_days"]), num(r["weekly_capacity_units"]), r["provenance_class"]),
             )
 
+        for r in read_csv("material_allocations.csv"):
+            conn.execute(
+                """
+                INSERT INTO material_allocations(
+                  material_id,source_facility_id,destination_facility_id,sku,
+                  approved,allocation_share,provenance_class
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (material_id,source_facility_id,destination_facility_id,sku) DO UPDATE SET
+                  approved=EXCLUDED.approved,allocation_share=EXCLUDED.allocation_share,
+                  provenance_class=EXCLUDED.provenance_class
+                """,
+                (
+                    r["material_id"], r["source_facility_id"], r["destination_facility_id"],
+                    r["sku"], boolean(r["approved"]), num(r["allocation_share"]),
+                    r["provenance_class"],
+                ),
+            )
+
         for r in read_csv("inventory.csv"):
             conn.execute(
                 """

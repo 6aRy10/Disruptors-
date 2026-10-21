@@ -29,15 +29,19 @@ def main() -> int:
         ("production_orders.csv", "facility_id", facilities, "facility"),
         ("purchase_orders.csv", "supplier_facility_id", facilities, "facility"),
         ("material_sources.csv", "facility_id", facilities, "facility"),
+        ("material_allocations.csv", "source_facility_id", facilities, "facility"),
+        ("material_allocations.csv", "destination_facility_id", facilities, "facility"),
         ("transport_lanes.csv", "origin_facility_id", facilities, "facility"),
         ("product_facilities.csv", "sku", products, "product"),
         ("supplier_capacity.csv", "sku", products, "product"),
         ("production_orders.csv", "sku", products, "product"),
         ("customer_orders.csv", "sku", products, "product"),
         ("bom.csv", "sku", products, "product"),
+        ("material_allocations.csv", "sku", products, "product"),
         ("bom.csv", "material_id", materials, "material"),
         ("purchase_orders.csv", "material_id", materials, "material"),
         ("material_sources.csv", "material_id", materials, "material"),
+        ("material_allocations.csv", "material_id", materials, "material"),
     ]
 
     for filename, column, master, label in checks:
@@ -47,6 +51,16 @@ def main() -> int:
             value = row.get(column, "").strip()
             if value and value not in master:
                 errors.append(f"{filename}: unknown {label} {column}={value}")
+
+    # Every explicit material allocation must refer to a material present in the SKU BOM.
+    bom_pairs = {(r["sku"], r["material_id"]) for r in read_csv("bom.csv")}
+    for row in read_csv("material_allocations.csv"):
+        pair = (row["sku"], row["material_id"])
+        if pair not in bom_pairs:
+            errors.append(
+                "material_allocations.csv: allocation material is not in BOM "
+                f"sku={row['sku']} material_id={row['material_id']}"
+            )
 
     if errors:
         print("SEED DATA INVALID")

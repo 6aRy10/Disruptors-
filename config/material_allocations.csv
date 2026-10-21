@@ -1,0 +1,6 @@
+material_id,source_facility_id,destination_facility_id,sku,approved,allocation_share,provenance_class,note
+MAT-THREAD,ADI26-0751,ADI26-0226,JI2993,True,1.0,SIMULATED_PRIVATE,Digital-twin allocation: Coats Rejo thread supports JI2993 production at PGS.
+MAT-TEXTILE-UPPER,ADI26-0754,ADI26-0226,JI2993,True,1.0,SIMULATED_PRIVATE,Digital-twin allocation: Dong Jin textile supports JI2993 production at PGS.
+MAT-RUBBER-OUTSOLE,ADI26-0758,ADI26-0226,JI2993,True,1.0,SIMULATED_PRIVATE,Digital-twin allocation: Paiho outsole supply supports JI2993 production at PGS.
+MAT-THREAD,ADI26-0751,ADI26-0233,JQ6656,True,1.0,SIMULATED_PRIVATE,Digital-twin allocation: Coats Rejo thread supports JQ6656 production at Panarub.
+MAT-TEXTILE-UPPER,ADI26-0754,ADI26-0233,JQ6656,True,1.0,SIMULATED_PRIVATE,Digital-twin allocation: Dong Jin textile supports JQ6656 production at Panarub.

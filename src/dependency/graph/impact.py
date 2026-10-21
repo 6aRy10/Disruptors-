@@ -6,7 +6,7 @@ from dependency.db.connection import connect
 
 
 def trace_event_impact(*, event_id: str, radius_km: float = 100.0) -> dict:
-    """Trace one geospatial event through facilities -> materials/assembly -> SKUs -> commitments.
+    """Trace one geospatial event through facilities -> sourcing edges/assembly -> SKUs -> commitments.
 
     Proximity is treated as POTENTIALLY_EXPOSED. This function does not claim a
     facility is damaged or closed.
@@ -67,30 +67,33 @@ def trace_event_impact(*, event_id: str, radius_km: float = 100.0) -> dict:
             (facility_ids,),
         ).fetchall()
 
-        # Upstream exposure: exposed material source -> material -> BOM -> SKU.
+        # Upstream exposure must follow an explicit source-of-supply edge.
+        # A thread supplier near an event must not affect every SKU in the global BOM.
         material_rows = conn.execute(
             """
             SELECT
-                ms.facility_id,
-                f.name,
-                ms.material_id,
+                ma.source_facility_id,
+                sf.name,
+                ma.material_id,
                 m.name,
-                b.sku,
+                ma.destination_facility_id,
+                df.name,
+                ma.sku,
                 p.name,
-                ms.role,
-                ms.provenance_class
-            FROM material_sources ms
-            JOIN facilities f ON f.facility_id = ms.facility_id
-            JOIN materials m ON m.material_id = ms.material_id
-            JOIN bom b ON b.material_id = ms.material_id
-            JOIN products p ON p.sku = b.sku
-            WHERE ms.facility_id = ANY(%s)
-            ORDER BY ms.facility_id, ms.material_id, b.sku
+                ma.provenance_class
+            FROM material_allocations ma
+            JOIN facilities sf ON sf.facility_id = ma.source_facility_id
+            JOIN facilities df ON df.facility_id = ma.destination_facility_id
+            JOIN materials m ON m.material_id = ma.material_id
+            JOIN products p ON p.sku = ma.sku
+            WHERE ma.source_facility_id = ANY(%s)
+              AND ma.approved = true
+            ORDER BY ma.source_facility_id, ma.material_id, ma.sku
             """,
             (facility_ids,),
         ).fetchall()
 
-        impacted_skus = sorted({r[2] for r in assembly_rows} | {r[4] for r in material_rows})
+        impacted_skus = sorted({r[2] for r in assembly_rows} | {r[6] for r in material_rows})
 
         commitments = []
         if impacted_skus:
@@ -150,10 +153,12 @@ def trace_event_impact(*, event_id: str, radius_km: float = 100.0) -> dict:
                 "distance_km": distances[r[0]],
                 "material_id": r[2],
                 "material_name": r[3],
-                "sku": r[4],
-                "product_name": r[5],
-                "relationship": r[6],
-                "provenance_class": r[7],
+                "destination_facility_id": r[4],
+                "destination_facility_name": r[5],
+                "sku": r[6],
+                "product_name": r[7],
+                "relationship": "source_of_supply",
+                "provenance_class": r[8],
                 "exposure_status": "POTENTIALLY_EXPOSED",
             }
         )
@@ -171,6 +176,8 @@ def trace_event_impact(*, event_id: str, radius_km: float = 100.0) -> dict:
                 "distance_km": path["distance_km"],
                 "material_id": path.get("material_id"),
                 "material_name": path.get("material_name"),
+                "destination_facility_id": path.get("destination_facility_id"),
+                "destination_facility_name": path.get("destination_facility_name"),
             }
         )
 

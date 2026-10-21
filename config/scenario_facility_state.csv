@@ -1,0 +1,4 @@
+scenario_id,facility_id,status,capacity_multiplier,confirmed,source_type,reason,provenance_class
+SCN-CIANJUR-REPLAY-01,ADI26-0226,UNAVAILABLE,0,True,PRIVATE_OPERATIONAL_STATE,Primary JI2993 assembly site unavailable in demo replay,SIMULATED_PRIVATE
+SCN-CIANJUR-REPLAY-01,ADI26-0225,UNAVAILABLE,0,True,PRIVATE_OPERATIONAL_STATE,Nominal backup also unavailable in demo replay,SIMULATED_PRIVATE
+SCN-CIANJUR-REPLAY-01,ADI26-0240,AVAILABLE,1,True,PRIVATE_OPERATIONAL_STATE,Independent backup remains operational but its capacity evidence is stale,SIMULATED_PRIVATE

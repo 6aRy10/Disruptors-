@@ -1,0 +1,2 @@
+scenario_id,event_id,name,mode,as_of,provenance_class,note
+SCN-CIANJUR-REPLAY-01,IDN-CIANJUR-2022-USGS-us7000ir9t,Cianjur replay operational deep dive,REPLAY,2026-10-21,SIMULATED_PRIVATE,Real historical event replayed against current network. Operational outage states are private demo assumptions and are not claims about historical factory damage.

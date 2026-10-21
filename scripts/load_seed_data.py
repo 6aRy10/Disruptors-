@@ -276,6 +276,46 @@ def load() -> None:
             ),
         )
 
+        for r in read_csv("scenarios.csv"):
+            conn.execute(
+                """
+                INSERT INTO scenarios(
+                  scenario_id,event_id,name,mode,as_of,provenance_class,note
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (scenario_id) DO UPDATE SET
+                  event_id=EXCLUDED.event_id,name=EXCLUDED.name,mode=EXCLUDED.mode,
+                  as_of=EXCLUDED.as_of,provenance_class=EXCLUDED.provenance_class,
+                  note=EXCLUDED.note
+                """,
+                (
+                    r["scenario_id"], r["event_id"], r["name"], r["mode"], r["as_of"],
+                    r["provenance_class"], r["note"],
+                ),
+            )
+
+        for r in read_csv("scenario_facility_state.csv"):
+            conn.execute(
+                """
+                INSERT INTO scenario_facility_state(
+                  scenario_id,facility_id,status,capacity_multiplier,confirmed,
+                  source_type,reason,provenance_class
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (scenario_id,facility_id) DO UPDATE SET
+                  status=EXCLUDED.status,capacity_multiplier=EXCLUDED.capacity_multiplier,
+                  confirmed=EXCLUDED.confirmed,source_type=EXCLUDED.source_type,
+                  reason=EXCLUDED.reason,provenance_class=EXCLUDED.provenance_class
+                """,
+                (
+                    r["scenario_id"], r["facility_id"], r["status"],
+                    num(r["capacity_multiplier"]), boolean(r["confirmed"]),
+                    r["source_type"], r["reason"], r["provenance_class"],
+                ),
+            )
+
+        # Seed loading is also the deterministic demo reset.
+        conn.execute("DELETE FROM supplier_capacity_observations")
+        conn.execute("UPDATE operational_state_version SET version = 1 WHERE singleton = true")
+
         conn.commit()
 
     print("Seed data loaded into PostgreSQL/PostGIS.")

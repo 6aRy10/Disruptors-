@@ -119,6 +119,20 @@ CREATE TABLE IF NOT EXISTS supplier_capacity (
   PRIMARY KEY(facility_id, sku, week_start)
 );
 
+CREATE TABLE IF NOT EXISTS supplier_capacity_observations (
+  observation_id text PRIMARY KEY,
+  facility_id text REFERENCES facilities(facility_id),
+  sku text REFERENCES products(sku),
+  observed_at timestamptz NOT NULL DEFAULT now(),
+  valid_until date,
+  capacity_units numeric NOT NULL,
+  committed_units numeric NOT NULL DEFAULT 0,
+  source_channel text,
+  raw_message text,
+  confirmed boolean NOT NULL DEFAULT false,
+  provenance_class text NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS production_orders (
   prod_id text PRIMARY KEY,
   sku text REFERENCES products(sku),
@@ -196,6 +210,28 @@ CREATE TABLE IF NOT EXISTS event_exposures (
   evidence jsonb,
   provenance_class text NOT NULL,
   PRIMARY KEY(event_id, entity_type, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS scenarios (
+  scenario_id text PRIMARY KEY,
+  event_id text REFERENCES external_events(event_id),
+  name text NOT NULL,
+  mode text NOT NULL,
+  as_of date NOT NULL,
+  provenance_class text NOT NULL,
+  note text
+);
+
+CREATE TABLE IF NOT EXISTS scenario_facility_state (
+  scenario_id text REFERENCES scenarios(scenario_id),
+  facility_id text REFERENCES facilities(facility_id),
+  status text NOT NULL CHECK (status IN ('AVAILABLE','DEGRADED','UNAVAILABLE','UNKNOWN')),
+  capacity_multiplier numeric NOT NULL DEFAULT 1 CHECK (capacity_multiplier >= 0 AND capacity_multiplier <= 1),
+  confirmed boolean NOT NULL DEFAULT false,
+  source_type text,
+  reason text,
+  provenance_class text NOT NULL,
+  PRIMARY KEY(scenario_id, facility_id)
 );
 
 CREATE TABLE IF NOT EXISTS operational_state_version (

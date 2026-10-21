@@ -20,6 +20,7 @@ def main() -> int:
     facilities = values("facilities_demo.csv", "facility_id")
     products = values("products.csv", "sku")
     materials = values("materials.csv", "material_id")
+    scenarios = values("scenarios.csv", "scenario_id")
 
     errors: list[str] = []
 
@@ -32,6 +33,7 @@ def main() -> int:
         ("material_allocations.csv", "source_facility_id", facilities, "facility"),
         ("material_allocations.csv", "destination_facility_id", facilities, "facility"),
         ("transport_lanes.csv", "origin_facility_id", facilities, "facility"),
+        ("scenario_facility_state.csv", "facility_id", facilities, "facility"),
         ("product_facilities.csv", "sku", products, "product"),
         ("supplier_capacity.csv", "sku", products, "product"),
         ("production_orders.csv", "sku", products, "product"),
@@ -42,6 +44,7 @@ def main() -> int:
         ("purchase_orders.csv", "material_id", materials, "material"),
         ("material_sources.csv", "material_id", materials, "material"),
         ("material_allocations.csv", "material_id", materials, "material"),
+        ("scenario_facility_state.csv", "scenario_id", scenarios, "scenario"),
     ]
 
     for filename, column, master, label in checks:
@@ -52,7 +55,6 @@ def main() -> int:
             if value and value not in master:
                 errors.append(f"{filename}: unknown {label} {column}={value}")
 
-    # Every explicit material allocation must refer to a material present in the SKU BOM.
     bom_pairs = {(r["sku"], r["material_id"]) for r in read_csv("bom.csv")}
     for row in read_csv("material_allocations.csv"):
         pair = (row["sku"], row["material_id"])
@@ -60,6 +62,28 @@ def main() -> int:
             errors.append(
                 "material_allocations.csv: allocation material is not in BOM "
                 f"sku={row['sku']} material_id={row['material_id']}"
+            )
+
+    approved_pairs = {
+        (r["sku"], r["facility_id"])
+        for r in read_csv("product_facilities.csv")
+        if r.get("approved", "").strip().lower() in {"true", "1", "yes", "y"}
+    }
+
+    for row in read_csv("production_orders.csv"):
+        pair = (row["sku"], row["facility_id"])
+        if pair not in approved_pairs:
+            errors.append(
+                "production_orders.csv: production facility is not an approved product facility "
+                f"sku={row['sku']} facility_id={row['facility_id']}"
+            )
+
+    for row in read_csv("supplier_capacity.csv"):
+        pair = (row["sku"], row["facility_id"])
+        if pair not in approved_pairs:
+            errors.append(
+                "supplier_capacity.csv: capacity exists for a facility not approved for the SKU "
+                f"sku={row['sku']} facility_id={row['facility_id']}"
             )
 
     if errors:

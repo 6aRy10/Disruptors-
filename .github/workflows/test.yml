@@ -179,5 +179,8 @@ jobs:
       - name: Test transport feasibility
         run: python -m unittest tests.test_transport_feasibility -v
 
+      - name: Test joint portfolio capacity optimization
+        run: python -m unittest tests.test_joint_optimization -v
+
       - name: Test recovery optimization
         run: python -m unittest tests.test_optimization -v

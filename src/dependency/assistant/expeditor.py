@@ -207,6 +207,23 @@ def answer_expeditor(*, question: str, event_id: str | None = None,
                       if n.get("node_type") == "UPSTREAM_FACILITY"][:10]
             if labels:
                 lines.append("Modeled upstream facilities: " + "; ".join(labels) + ".")
+            if _matches(question, "order", "orders", "customer", "customers", "commitment", "commitments", "deliveries"):
+                customer_orders = [n for n in graph["nodes"]
+                                   if n.get("node_type") == "CUSTOMER_COMMITMENT"]
+                if customer_orders:
+                    lines.append("Connected customer orders: " + "; ".join(
+                        str(o.get("commitment_id", o["id"])) + ": " +
+                        str(o.get("qty", "unknown")) + " modeled units" +
+                        (", due " + str(o["due_date"]) if o.get("due_date") else "")
+                        for o in customer_orders[:15]) + ".")
+                else:
+                    lines.append("No customer order objects were returned by this product graph.")
+            if _matches(question, "bom", "material", "materials", "component", "components"):
+                material_nodes = [n for n in graph["nodes"]
+                                  if n.get("node_type") == "MATERIAL"]
+                if material_nodes:
+                    lines.append("Modeled BOM materials: " + "; ".join(
+                        str(n.get("label", n["id"])) for n in material_nodes[:15]) + ".")
         if context.get("facility"):
             site = context["facility"]
             lines.append(f"{site['name']}: {site['connected_product_count']} connected products in the modeled private graph.")

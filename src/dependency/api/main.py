@@ -5,8 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from dependency.db.connection import connect, postgis_version
-from dependency.agents.orchestrator import run_incident_agents
+from dependency.agents.orchestrator import run_event_autopilot, run_incident_agents
 from dependency.memory.service import get_incident_memory, similar_incidents
+from dependency.incidents.triage import triage_event
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
@@ -54,6 +55,12 @@ class AgentIncidentRequest(BaseModel):
     event_id: str
     scenario_id: str
     sku: str
+    radius_km: float = Field(default=150.0, gt=0, le=1000)
+    model: str | None = None
+    persist: bool = True
+
+
+class EventAutopilotRequest(BaseModel):
     radius_km: float = Field(default=150.0, gt=0, le=1000)
     model: str | None = None
     persist: bool = True
@@ -367,6 +374,32 @@ def state_substitution(body: SubstitutionApprovalUpdate):
             scenario_id=body.scenario_id,
             sku=body.sku,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/events/{event_id}/triage")
+def event_triage(
+    event_id: str,
+    radius_km: float = Query(default=150.0, gt=0, le=1000),
+):
+    try:
+        return triage_event(event_id=event_id, radius_km=radius_km)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/agents/run-event/{event_id}")
+def agents_run_event(event_id: str, body: EventAutopilotRequest):
+    try:
+        return run_event_autopilot(
+            event_id=event_id,
+            radius_km=body.radius_km,
+            model=body.model,
+            persist=body.persist,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

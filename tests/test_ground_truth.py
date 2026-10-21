@@ -42,9 +42,14 @@ class GroundTruthTests(unittest.TestCase):
             scenario_id=self.SCENARIO_ID,
             sku="JI2993",
         )
-        plan_b = next(p for p in plans if p["plan_id"] == "PLAN-B-SUBSTITUTE-OUTSOLE")
-        self.assertEqual(plan_b["decision"], "REJECTED")
-        self.assertIn("SUBSTITUTE_NOT_APPROVED", plan_b["reasons"])
+        substitute = next(
+            p
+            for p in plans
+            if p["plan_type"] == "MATERIAL_SUBSTITUTION"
+            and p["evidence"]["material_id"] == "MAT-RUBBER-OUTSOLE"
+        )
+        self.assertEqual(substitute["decision"], "REJECTED")
+        self.assertIn("SUBSTITUTE_NOT_APPROVED", substitute["reasons"])
 
     def test_gt05_initial_recovery(self):
         conservative = plan_sku_recovery(

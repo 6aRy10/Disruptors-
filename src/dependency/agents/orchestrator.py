@@ -8,6 +8,7 @@ from dependency.agents.specs import (
 )
 from dependency.db.connection import connect
 from dependency.memory.service import ensure_incident, record_agent_run, save_plan_snapshot
+from dependency.incidents.triage import triage_event
 from dependency.solver.candidates import generate_recovery_candidates
 
 
@@ -148,4 +149,74 @@ State the current shortage, protected revenue/margin, and required next action.
             "impact": impact,
             "recovery": recovery,
         },
+    }
+
+
+
+def run_event_autopilot(
+    *,
+    event_id: str,
+    radius_km: float = 150.0,
+    model: str | None = None,
+    persist: bool = True,
+) -> dict:
+    """Start from an event ID and derive the business deep dive from data.
+
+    The caller does not provide a SKU or scenario. Triage ranks impacted SKUs
+    from current graph/commercial exposure and discovers a scenario linked to
+    the event when one exists.
+    """
+    triage = triage_event(event_id=event_id, radius_km=radius_km)
+
+    if triage["status"] == "NO_NETWORK_EXPOSURE":
+        return {
+            "event_id": event_id,
+            "status": "NO_NETWORK_EXPOSURE",
+            "triage": triage,
+            "agent_run": None,
+        }
+
+    if not triage["impacted_products"]:
+        return {
+            "event_id": event_id,
+            "status": "PUBLIC_EXPOSURE_REQUIRES_BUSINESS_LINK",
+            "triage": triage,
+            "agent_run": None,
+        }
+
+    selected = triage["impacted_products"][0]
+    scenario_id = triage.get("scenario_id")
+    if not scenario_id:
+        return {
+            "event_id": event_id,
+            "status": "AWAITING_OPERATIONAL_CONFIRMATION",
+            "selected_sku": selected["sku"],
+            "selection_reason": {
+                "gross_margin_eur": selected.get("gross_margin_eur"),
+                "revenue_eur": selected.get("revenue_eur"),
+                "rule": "highest connected gross margin, then revenue",
+            },
+            "triage": triage,
+            "agent_run": None,
+        }
+
+    result = run_incident_agents(
+        event_id=event_id,
+        scenario_id=scenario_id,
+        sku=selected["sku"],
+        radius_km=radius_km,
+        model=model,
+        persist=persist,
+    )
+    return {
+        "event_id": event_id,
+        "status": "AGENT_CHAIN_COMPLETED",
+        "selected_sku": selected["sku"],
+        "selection_reason": {
+            "gross_margin_eur": selected.get("gross_margin_eur"),
+            "revenue_eur": selected.get("revenue_eur"),
+            "rule": "highest connected gross margin, then revenue",
+        },
+        "triage": triage,
+        "agent_run": result,
     }

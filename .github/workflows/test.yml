@@ -184,3 +184,6 @@ jobs:
 
       - name: Test recovery optimization
         run: python -m unittest tests.test_optimization -v
+
+      - name: Rehearse full Cianjur control loop
+        run: python scripts/rehearse_control_loop.py

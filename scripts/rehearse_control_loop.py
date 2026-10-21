@@ -236,7 +236,7 @@ def main() -> None:
         "\nEmergency safety-stock option:",
         json.dumps(
             {
-                "safety_stock_used_units": emergency[
+                "safety_stock_used_units": emergency["inventory"][
                     "safety_stock_used_units"
                 ],
                 "shortage_units": emergency["shortage_units"],

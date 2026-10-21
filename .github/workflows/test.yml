@@ -188,6 +188,9 @@ jobs:
       - name: Test recovery optimization
         run: python -m unittest tests.test_optimization -v
 
+      - name: Test rehearsal recovery data contract
+        run: python -m unittest tests.test_rehearsal_contract -v
+
       - name: Rehearsal checkpoint - exposure and recovery
         run: python scripts/rehearse_control_loop.py --stop-after-stage 2
 

@@ -39,7 +39,8 @@ class UnscriptedEvidenceToRecoveryTests(unittest.TestCase):
                   ON fnl.network_facility_id=nf.network_facility_id
                 JOIN production_orders po ON po.facility_id=fnl.facility_id
                 WHERE nf.geom IS NOT NULL
-                ORDER BY nf.network_facility_id,fnl.facility_id
+                GROUP BY nf.network_facility_id,fnl.facility_id,nf.geom
+                ORDER BY COUNT(DISTINCT po.sku),nf.network_facility_id,fnl.facility_id
                 LIMIT 1
                 """
             ).fetchone()
@@ -76,6 +77,7 @@ class UnscriptedEvidenceToRecoveryTests(unittest.TestCase):
             "evidence_reference":"TEST-EVIDENCE-RESPONSE-1",
             "reason":"Test fixture models a confirmed supplier closure, not a public claim.",
         }
+        print("Unscripted evidence test: confirming operator evidence", flush=True)
         confirmed = confirm_facility_investigation(**kwargs)
         self.assertEqual(confirmed["status"], "RESOLVED")
         self.assertEqual(confirmed["incident_id"], incident_id)
@@ -112,6 +114,7 @@ class UnscriptedEvidenceToRecoveryTests(unittest.TestCase):
         post = triage_event(event_id=self.event_id,radius_km=1.0)
         self.assertEqual(post["incident"]["incident_id"], incident_id)
         self.assertEqual(post["scenario_id"], scenario)
+        print("Unscripted evidence test: running real portfolio recovery", flush=True)
         planned = _process_external_event(
             {"event_id": self.event_id},run_agents=False,radius_km=1.0
         )

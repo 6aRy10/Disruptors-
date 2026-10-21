@@ -207,7 +207,10 @@ def normalize_company(name: str, country: str | None = None, limit: int = 5) -> 
         official_key = "".join(
             ch for ch in str(row[3] or "").lower() if ch.isalnum()
         )
-        if query_key and query_key in {name_key, official_key}:
+        exact_match = bool(
+            query_key and query_key in {name_key, official_key}
+        )
+        if exact_match:
             score = 100.0
         else:
             score = float(token_set_ratio(query, candidate_text))
@@ -224,9 +227,18 @@ def normalize_company(name: str, country: str | None = None, limit: int = 5) -> 
                 "osh_url": row[8],
                 "provenance_class": row[9],
                 "match_score": round(score, 1),
+                "match_method": (
+                    "EXACT_NORMALIZED_NAME" if exact_match else "FUZZY_TOKEN_SET"
+                ),
             }
         )
-    scored.sort(key=lambda x: (-x["match_score"], x["network_facility_id"]))
+    scored.sort(
+        key=lambda x: (
+            0 if x["match_method"] == "EXACT_NORMALIZED_NAME" else 1,
+            -x["match_score"],
+            x["network_facility_id"],
+        )
+    )
     return {
         "query": name,
         "country": country,

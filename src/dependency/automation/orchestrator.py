@@ -200,6 +200,20 @@ def _process_external_event(
     }
 
 
+def _portfolio_already_replanned(incident_id: str, state_version: int | None) -> bool:
+    """Skip repeated full portfolio solves for one saved incident generation."""
+    if state_version is None:
+        return False
+    with connect() as conn:
+        return bool(conn.execute(
+            """
+            SELECT EXISTS(SELECT 1 FROM incident_plan_history
+                          WHERE incident_id=%s AND state_version=%s)
+            """,
+            (incident_id,int(state_version)),
+        ).fetchone()[0])
+
+
 def _process_plan_invalidated(
     payload: dict,
     *,
@@ -210,7 +224,13 @@ def _process_plan_invalidated(
         return {"status": "IGNORED", "reason": "MISSING_SKU"}
 
     replans = []
+    skipped_completed = []
     for incident in _open_incidents():
+        if _portfolio_already_replanned(
+            incident["incident_id"], payload.get("new_state_version")
+        ):
+            skipped_completed.append(incident["incident_id"])
+            continue
         try:
             portfolio = plan_event_recovery(
                 event_id=incident["event_id"],
@@ -249,6 +269,7 @@ def _process_plan_invalidated(
         "new_state_version": payload.get("new_state_version"),
         "reason": payload.get("reason"),
         "replans": replans,
+        "skipped_already_replanned_incident_ids": skipped_completed,
     }
 
 

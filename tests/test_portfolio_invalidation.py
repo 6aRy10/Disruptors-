@@ -42,5 +42,22 @@ class PortfolioInvalidationTests(unittest.TestCase):
         save.assert_not_called()
 
 
+    @patch("dependency.automation.orchestrator._portfolio_already_replanned",
+           return_value=True)
+    @patch("dependency.automation.orchestrator._save_portfolio_plans")
+    @patch("dependency.automation.orchestrator.plan_event_recovery")
+    @patch("dependency.automation.orchestrator._open_incidents")
+    def test_skip_completed_generation(self, incidents, solver, saver, already):
+        incidents.return_value=[
+            {"incident_id":"INC-TEST","event_id":"EVENT-TEST","scenario_id":"SCN-TEST"}
+        ]
+        outcome=_process_plan_invalidated(
+            {"sku":"DYNAMIC-SKU","new_state_version":9},radius_km=150,
+        )
+        solver.assert_not_called()
+        saver.assert_not_called()
+        self.assertEqual(outcome["skipped_already_replanned_incident_ids"],["INC-TEST"])
+
+
 if __name__ == "__main__":
     unittest.main()

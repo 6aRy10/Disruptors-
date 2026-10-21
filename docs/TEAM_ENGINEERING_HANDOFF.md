@@ -176,3 +176,12 @@ This uses configured paid model credits. The default without `--agents` is
 free deterministic ingestion and queues only. The agent has **no tool** for
 confirming disruption, sending supplier messages, modifying capacity, or
 executing protected actions. Never leave paid agent mode on by accident.
+
+## High-volume invalidation behavior
+
+One factory change may invalidate many SKU plans. Before an expensive solver
+run, the worker checks whether that incident already saved its complete
+portfolio for the same operational state version. Repeated SKU messages then
+skip duplicate graph work. The transport still needs one active consumer
+until concurrent claim-locking is implemented; avoid two workers writing the
+same incident generation in parallel.

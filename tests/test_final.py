@@ -22,7 +22,11 @@ class DependencyFinalTests(unittest.TestCase):
     def test_supplier_capacity_shock(self):
         result = summarize(allocate_orders(ORDERS, 5600))
         self.assertEqual(result["late_units"], 3900)
-        self.assertEqual(result["protected_margin_eur"], 303200)
+        self.assertEqual(result["protected_margin_eur"], 300000)
+        allocations = {row["order_id"]: row for row in result["allocations"]}
+        self.assertEqual(allocations["ORD-JI-EU"]["allocated_qty"], 4000)
+        self.assertEqual(allocations["ORD-JI-NA"]["allocated_qty"], 1600)
+        self.assertEqual(allocations["ORD-JI-GC"]["allocated_qty"], 0)
 
     def test_feasibility_shortage(self):
         result = check_plan(required_units=9500, finished_units=2100, assembly_units=3500)

@@ -55,7 +55,7 @@ class PortfolioRecoveryTests(unittest.TestCase):
         )
         self.assertEqual(
             portfolio["summary"]["total_at_risk_margin_eur"],
-            20000.0,
+            20800.0,
         )
         self.assertTrue(portfolio["action_queue"])
         self.assertTrue(

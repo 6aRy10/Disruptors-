@@ -97,7 +97,7 @@ Best emergency supply:
 Deterministic allocation protects:
 
 - EUR 728,000 revenue;
-- EUR 303,200 margin.
+- EUR 300,000 margin.
 
 The remaining customer demand is late.
 

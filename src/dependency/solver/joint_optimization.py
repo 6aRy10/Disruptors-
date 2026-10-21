@@ -69,12 +69,13 @@ def optimize_joint_recovery(
     physical_caps = {}
     cap_source = {}
     unverified = []
+    unverified_override_facilities = []
     for facility, uses in backup_uses.items():
         if facility in supplied_limits:
             physical_caps[facility] = supplied_limits[facility]
             cap_source[facility] = "UNVERIFIED_CALLER_OVERRIDE"
             if len({sku for sku, _ in uses}) > 1:
-                unverified.append(facility)
+                unverified_override_facilities.append(facility)
         elif facility in confirmed_caps:
             physical_caps[facility] = confirmed_caps[facility]["available_units"]
             cap_source[facility] = "CONFIRMED_DATED_FACILITY_CAPACITY"
@@ -194,13 +195,14 @@ def optimize_joint_recovery(
         if material_audit["modeled_capacity_conflicts"] else
         "SHORTAGE" if protected < total_demand else
         "PROVISIONAL" if (
-            provisional_used or unverified
+            provisional_used or unverified or unverified_override_facilities
             or not material_audit["execution_materials_verified"]
         ) else
         "APPROVAL_REQUIRED" if approvals_needed else "FEASIBLE"
     )
     verified = (
-        not unverified and not provisional_used and not approvals_needed
+        not unverified and not unverified_override_facilities
+        and not provisional_used and not approvals_needed
         and material_audit["execution_materials_verified"]
     )
     return {
@@ -214,6 +216,7 @@ def optimize_joint_recovery(
         "status": status,
         "portfolio_allocation_verified": verified,
         "unverified_shared_capacity_facilities": sorted(unverified),
+        "unverified_override_facilities": sorted(unverified_override_facilities),
         "capacity_limit_source": {k:cap_source[k] for k in sorted(cap_source)},
         "confirmed_capacity_evidence": confirmed_caps,
         "shared_facility_capacity": physical_caps,

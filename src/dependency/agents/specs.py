@@ -83,12 +83,14 @@ RECOVERY_PLANNER = AgentSpec(
         "get_recovery_plan",
         "get_supplier_capacity",
         "get_product_risk",
+        "get_event_portfolio",
         "check_backup_independence",
     ),
     instructions=COMMON_GUARDRAILS
     + """
 Your job:
-- Generate practical recovery actions.
+- Generate practical recovery actions across every operationally affected SKU.
+- Use the event portfolio tool before narrowing to a single product.
 - Use deterministic candidate and recovery tools before calling a plan feasible.
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
@@ -97,7 +99,7 @@ Your job:
 - Never override engineering approval, supplier confirmation, or solver rejection.
 
 Stop when there is:
-- a ranked set of candidate actions;
+- an event-level ranked action queue and per-SKU candidate actions;
 - deterministic pass/fail reasons;
 - the approval or evidence still required;
 - the current shortage and protected commercial value.

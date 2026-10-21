@@ -73,3 +73,9 @@ jobs:
 
       - name: Test judge-editable operational state
         run: python -m unittest tests.test_judge_edits -v
+
+      - name: Test de-hardcoding
+        run: python -m unittest tests.test_dehardcoding -v
+
+      - name: Test portfolio recovery
+        run: python -m unittest tests.test_portfolio -v

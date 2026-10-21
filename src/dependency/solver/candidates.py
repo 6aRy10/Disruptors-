@@ -12,6 +12,7 @@ HARD_REJECTION_REASONS = {
     "BACKUP_NOT_READY_BY_DUE_DATE",
     "BACKUP_CAPACITY_NOT_AVAILABLE",
     "SHARED_UPSTREAM_DEPENDENCY",
+    "CRITICAL_MATERIAL_SOURCE_UNAVAILABLE",
 }
 
 
@@ -160,6 +161,10 @@ def _backup_candidate(
         reasons.append("BACKUP_NOT_READY_BY_DUE_DATE")
     if backup["capacity_status"] != "available" or backup["available_capacity_units"] <= 0:
         reasons.append("BACKUP_CAPACITY_NOT_AVAILABLE")
+    if backup.get("material_path_blocked"):
+        reasons.append("CRITICAL_MATERIAL_SOURCE_UNAVAILABLE")
+    if backup.get("requires_material_confirmation"):
+        reasons.append("MATERIAL_PATH_CONFIRMATION_REQUIRED")
 
     for primary_facility_id in affected_current_facilities:
         independence = backup_independence(
@@ -186,7 +191,11 @@ def _backup_candidate(
     hard_rejected = any(reason in HARD_REJECTION_REASONS for reason in reasons)
     if hard_rejected:
         decision = "REJECTED"
-    elif residual_shortage > 0 or backup["requires_supplier_confirmation"]:
+    elif (
+        residual_shortage > 0
+        or backup["requires_supplier_confirmation"]
+        or backup.get("requires_material_confirmation")
+    ):
         decision = "CONDITIONALLY_FEASIBLE"
     else:
         decision = "FEASIBLE"
@@ -200,6 +209,7 @@ def _backup_candidate(
         "score": round(
             (coverage_ratio * 100)
             - (10 if backup["requires_supplier_confirmation"] else 0)
+            - (10 if backup.get("requires_material_confirmation") else 0)
             - (2 * float(backup["setup_lead_days"]))
             - (35 if shared_dependencies else 0),
             1,
@@ -222,6 +232,7 @@ def _backup_candidate(
             "residual_shortage_units": residual_shortage,
             "shared_dependency_count": len(shared_dependencies),
             "shared_dependencies": shared_dependencies,
+            "material_path": backup.get("material_path"),
             "provenance_class": backup["provenance_class"],
         },
     }
@@ -245,6 +256,7 @@ def _split_backup_candidate(
     eligible.sort(
         key=lambda p: (
             "SUPPLIER_CAPACITY_CONFIRMATION_REQUIRED" in p["reasons"],
+            "MATERIAL_PATH_CONFIRMATION_REQUIRED" in p["reasons"],
             -p["evidence"]["available_capacity_units"],
             p["evidence"]["setup_lead_days"],
             p["evidence"]["backup_facility_id"],
@@ -255,6 +267,7 @@ def _split_backup_candidate(
     allocations = []
     selected_ids: list[str] = []
     requires_confirmation = False
+    requires_material_confirmation = False
 
     for plan in eligible:
         if remaining <= 0:
@@ -290,12 +303,19 @@ def _split_backup_candidate(
                 "requires_supplier_confirmation": (
                     "SUPPLIER_CAPACITY_CONFIRMATION_REQUIRED" in plan["reasons"]
                 ),
+                "requires_material_confirmation": (
+                    "MATERIAL_PATH_CONFIRMATION_REQUIRED" in plan["reasons"]
+                ),
             }
         )
         selected_ids.append(candidate_id)
         requires_confirmation = requires_confirmation or allocations[-1][
             "requires_supplier_confirmation"
         ]
+        requires_material_confirmation = (
+            requires_material_confirmation
+            or allocations[-1]["requires_material_confirmation"]
+        )
         remaining -= allocated
 
     if len(allocations) < 2:
@@ -304,12 +324,16 @@ def _split_backup_candidate(
     reasons = []
     if requires_confirmation:
         reasons.append("SUPPLIER_CAPACITY_CONFIRMATION_REQUIRED")
+    if requires_material_confirmation:
+        reasons.append("MATERIAL_PATH_CONFIRMATION_REQUIRED")
     if remaining > 0:
         reasons.append("RESIDUAL_SHORTAGE")
 
     decision = (
         "FEASIBLE"
-        if remaining <= 0 and not requires_confirmation
+        if remaining <= 0
+        and not requires_confirmation
+        and not requires_material_confirmation
         else "CONDITIONALLY_FEASIBLE"
     )
 
@@ -321,7 +345,8 @@ def _split_backup_candidate(
         "reasons": reasons,
         "score": round(
             (100 if remaining <= 0 else max(0.0, 100 * (1 - remaining / base_gap_units)))
-            - (10 if requires_confirmation else 0),
+            - (10 if requires_confirmation else 0)
+            - (10 if requires_material_confirmation else 0),
             1,
         ),
         "evidence": {
@@ -330,6 +355,7 @@ def _split_backup_candidate(
             "allocations": allocations,
             "residual_shortage_units": max(0.0, remaining),
             "requires_supplier_confirmation": requires_confirmation,
+            "requires_material_confirmation": requires_material_confirmation,
         },
     }
 

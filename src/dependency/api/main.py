@@ -24,6 +24,7 @@ from dependency.services.state_updates import (
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.candidates import generate_recovery_candidates
+from dependency.solver.portfolio import plan_event_recovery
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
@@ -410,23 +411,34 @@ def event_operational_state(event_id: str, body: EventFacilityStateUpdate):
         )
         triage = triage_event(event_id=event_id, radius_km=150.0)
         scenario_id = result["scenario"]["scenario_id"]
-        plans = {}
-        for product in triage.get("impacted_products", []):
-            sku = product["sku"]
-            try:
-                plans[sku] = generate_recovery_candidates(
-                    scenario_id=scenario_id,
-                    sku=sku,
-                )
-            except ValueError:
-                plans[sku] = []
+        portfolio = plan_event_recovery(
+            event_id=event_id,
+            scenario_id=scenario_id,
+            radius_km=150.0,
+        )
         return {
             **result,
             "triage": triage,
-            "recovery_candidates": plans,
+            "portfolio": portfolio,
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/events/{event_id}/portfolio/{scenario_id}")
+def event_portfolio(
+    event_id: str,
+    scenario_id: str,
+    radius_km: float = Query(default=150.0, gt=0, le=1000),
+):
+    try:
+        return plan_event_recovery(
+            event_id=event_id,
+            scenario_id=scenario_id,
+            radius_km=radius_km,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.post("/events/{event_id}/triage")

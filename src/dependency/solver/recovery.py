@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from dependency.db.connection import connect
+from dependency.graph.material_paths import assess_material_paths
 from dependency.solver.allocation import Order, allocate_orders, summarize
 
 
@@ -184,6 +185,11 @@ def plan_sku_recovery(
             ready_date = as_of + timedelta(days=setup_days)
             due_feasible = ready_date <= earliest_due
             stale = float(row[6] or 0) > stale_after_hours
+            material_path = assess_material_paths(
+                scenario_id=scenario_id,
+                sku=sku,
+                destination_facility_id=facility_id,
+            )
 
             candidates.append(
                 {
@@ -202,6 +208,11 @@ def plan_sku_recovery(
                     "status_confirmed": state["confirmed"],
                     "due_feasible": due_feasible,
                     "requires_supplier_confirmation": stale,
+                    "requires_material_confirmation": material_path[
+                        "requires_confirmation"
+                    ],
+                    "material_path_blocked": material_path["blocked"],
+                    "material_path": material_path,
                     "provenance_class": row[8],
                 }
             )
@@ -210,6 +221,7 @@ def plan_sku_recovery(
             c
             for c in candidates
             if c["scenario_status"] != "UNAVAILABLE"
+            and not c["material_path_blocked"]
             and c["due_feasible"]
             and c["available_capacity_units"] > 0
             and c["capacity_status"] == "available"
@@ -218,6 +230,7 @@ def plan_sku_recovery(
             key=lambda c: (
                 0 if c["role"] == "independent_backup" else 1,
                 c["requires_supplier_confirmation"],
+                c["requires_material_confirmation"],
                 -c["available_capacity_units"],
                 c["setup_lead_days"],
                 c["facility_id"],
@@ -259,15 +272,19 @@ def plan_sku_recovery(
         requires_confirmation = bool(
             selected and selected["requires_supplier_confirmation"]
         )
+        requires_material_confirmation = bool(
+            selected and selected["requires_material_confirmation"]
+        )
         requires_planner_approval = safety_stock_used > 0
+        provisional = requires_confirmation or requires_material_confirmation
 
-        if shortage_units > 0 and requires_confirmation:
+        if shortage_units > 0 and provisional:
             plan_status = "PROVISIONAL_SHORTAGE"
         elif shortage_units > 0:
             plan_status = "SHORTAGE"
-        elif requires_confirmation and requires_planner_approval:
+        elif provisional and requires_planner_approval:
             plan_status = "PROVISIONAL_REQUIRES_CONFIRMATION_AND_APPROVAL"
-        elif requires_confirmation:
+        elif provisional:
             plan_status = "PROVISIONAL_AWAITING_CONFIRMATION"
         elif requires_planner_approval:
             plan_status = "FEASIBLE_REQUIRES_APPROVAL"
@@ -298,6 +315,7 @@ def plan_sku_recovery(
             "total_available_units": total_available,
             "shortage_units": shortage_units,
             "requires_supplier_confirmation": requires_confirmation,
+            "requires_material_confirmation": requires_material_confirmation,
             "requires_planner_approval": requires_planner_approval,
             "allocation": allocation,
         }

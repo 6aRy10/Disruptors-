@@ -58,6 +58,8 @@ def scenario_product_risk(*, scenario_id: str, sku: str) -> dict:
     recovery_difficulty = 25.0
     if plan["requires_supplier_confirmation"]:
         recovery_difficulty += 25.0
+    if plan.get("requires_material_confirmation"):
+        recovery_difficulty += 20.0
     if not plan["selected_backup"]:
         recovery_difficulty += 30.0
     recovery_difficulty += min(20.0, shortage_ratio * 100.0 * 0.5)
@@ -91,6 +93,10 @@ def scenario_product_risk(*, scenario_id: str, sku: str) -> dict:
             "shortage_units": plan["shortage_units"],
             "shortage_ratio_pct": round(shortage_ratio * 100.0, 1),
             "requires_supplier_confirmation": plan["requires_supplier_confirmation"],
+            "requires_material_confirmation": plan.get(
+                "requires_material_confirmation",
+                False,
+            ),
             "selected_backup_facility_id": (
                 plan["selected_backup"]["facility_id"]
                 if plan["selected_backup"]

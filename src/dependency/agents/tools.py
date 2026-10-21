@@ -10,6 +10,7 @@ from dependency.graph.shared_dependencies import backup_independence
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.material_timing import purchase_order_supply_by_date
+from dependency.solver.portfolio import plan_event_recovery
 from dependency.solver.recovery import plan_sku_recovery
 
 
@@ -142,6 +143,7 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "generate_recovery_candidates": lambda: generate_recovery_candidates(**args),
         "get_recovery_plan": lambda: plan_sku_recovery(**args),
         "get_product_risk": lambda: scenario_product_risk(**args),
+        "get_event_portfolio": lambda: plan_event_recovery(**args),
     }
     if name not in tools:
         raise ValueError(f"Unknown agent tool: {name}")
@@ -277,6 +279,22 @@ TOOL_SCHEMAS = [
                 "release_safety_stock": {"type": "boolean"},
             },
             "required": ["scenario_id", "sku", "release_safety_stock"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_event_portfolio",
+        "description": "Evaluate every SKU reached by an event and return the deterministic event-level recovery portfolio, action queue, rejected actions, and shared-resource conflicts.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "event_id": {"type": "string"},
+                "scenario_id": {"type": "string"},
+                "radius_km": {"type": "number"},
+            },
+            "required": ["event_id", "scenario_id", "radius_km"],
             "additionalProperties": False,
         },
     },

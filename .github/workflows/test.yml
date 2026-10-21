@@ -74,8 +74,14 @@ jobs:
       - name: Agent tool - upstream trace
         run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_upstream_trace_uses_explicit_allocations -v
 
-      - name: Agent tool - company normalization
-        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_company_normalization_resolves_public_network_candidate -v
+      - name: Agent tool - company normalization returns candidates
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_company_normalization_returns_candidates -v
+
+      - name: Agent tool - company normalization exact priority
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_company_normalization_prioritizes_exact_match -v
+
+      - name: Agent tool - company normalization demo supplier
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_company_normalization_keeps_demo_supplier_in_results -v
 
       - name: Agent tool - transport options
         run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_transport_options_are_data_driven -v

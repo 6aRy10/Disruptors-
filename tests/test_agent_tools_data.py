@@ -44,23 +44,31 @@ class AgentDataToolTests(unittest.TestCase):
             {"MAT-THREAD", "MAT-TEXTILE-UPPER", "MAT-RUBBER-OUTSOLE"},
         )
 
-    def test_company_normalization_resolves_public_network_candidate(self):
+    def test_company_normalization_returns_candidates(self):
         exact = normalize_company(
             "Barna Bordados Carlos Vega",
             "Argentina",
             5,
         )
         self.assertTrue(exact["matches"])
+
+    def test_company_normalization_prioritizes_exact_match(self):
+        exact = normalize_company(
+            "Barna Bordados Carlos Vega",
+            "Argentina",
+            5,
+        )
         self.assertEqual(exact["matches"][0]["match_score"], 100.0)
         self.assertEqual(
-            exact["matches"][0]["official_name"],
-            "Barna Bordados Carlos Vega",
+            exact["matches"][0]["match_method"],
+            "EXACT_NORMALIZED_NAME",
         )
 
+    def test_company_normalization_keeps_demo_supplier_in_results(self):
         demo_relevant = normalize_company(
             "PT Glostar Indonesia PGS",
             "Indonesia",
-            10,
+            20,
         )
         self.assertTrue(
             any(

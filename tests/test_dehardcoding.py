@@ -4,7 +4,7 @@ from pathlib import Path
 from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
 from dependency.graph.event_impact import trace_business_event_impact
-from dependency.graph.exposure import facilities_within_radius
+from dependency.graph.exposure import facilities_within_radius, operational_facilities_within_radius
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
 
@@ -364,19 +364,12 @@ class DehardcodingTests(unittest.TestCase):
         event_id = "TEST-ARBITRARY-SCALE-GEO"
         fixture = self._insert_scale_earthquake(event_id)
         try:
-            rows = facilities_within_radius(
+            rows = operational_facilities_within_radius(
                 latitude=fixture["latitude"],
                 longitude=fixture["longitude"],
                 radius_km=3,
             )
-            ids = {
-                operational_id
-                for row in rows
-                for operational_id in row.get(
-                    "operational_facility_ids",
-                    [],
-                )
-            }
+            ids = {row["facility_id"] for row in rows}
             self.assertIn(fixture["facility_id"], ids)
         finally:
             self._delete_test_event(event_id)

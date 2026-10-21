@@ -145,3 +145,16 @@ hourly. This avoids an unbounded number of external requests during demos. Port
 lookup conflicts and provider errors are reported. PortWatch is a derived
 traffic-anomaly signal, never a verified port closure. Old activity records do
 not create new live incidents. Cianjur remains the sole flagship demo.
+
+## Prove that a live event reached the private business graph
+
+After a live ingestion run, check any known event identifier:
+
+```powershell
+python -m scripts.inspect_event GDACS-WF-1032942
+```
+
+This is read-only. It shows the provider and provenance, queue consumption,
+incident (if one exists), explicit dependency paths, and connected commercial
+value. A missing product path is a valid outcome, not permission to invent a
+factory-to-SKU assignment. Never equate proximity with verified factory damage.

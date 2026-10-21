@@ -1,3 +1,0 @@
-threshold_id,object_type,notify_above,escalate_above,channel,owner_role,enabled,provenance_class,note
-TH-DEFAULT,any,30,70,Slack,Supply Risk Planner,True,SIMULATED_PRIVATE,Default demo policy. Configurable in production.
-TH-CRITICAL-SKU,product,25,70,Slack,Supply Risk Planner,True,SIMULATED_PRIVATE,Example lower threshold for strategic/sole-source SKUs.

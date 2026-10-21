@@ -158,6 +158,9 @@ jobs:
       - name: Test component feasibility
         run: python -m unittest tests.test_component_feasibility -v
 
+      - name: Test unified live ingestion and orchestration
+        run: python -m unittest tests.test_live_stack -v
+
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
 

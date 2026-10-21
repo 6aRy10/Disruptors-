@@ -94,3 +94,19 @@ Full replay: `scripts/rehearse_control_loop.py`.
 Test suite: `tests/`.
 Detailed architecture: `docs/architecture.md`.
 Demo: `docs/demo_contract.md`.
+
+## Run real event ingestion locally
+
+Once the database is loaded, run this command from the repository root:
+
+```powershell
+python -m scripts.run_live_stack
+```
+
+This polls both real external feeds once, writes events to PostgreSQL, and
+processes the transactional outbox. No model key or Slack integration is
+required. It never resets demo records. For ongoing polling in the same
+PowerShell window, run `python -m scripts.run_live_stack --watch` and stop
+with Ctrl+C. A green source status means feed and ingestion ran, not that any
+supplier was confirmed disrupted. Live observations do not automatically
+create private operational confirmations.

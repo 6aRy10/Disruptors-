@@ -5,6 +5,7 @@ from datetime import date
 from dependency.db.connection import connect
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.solver.recovery import plan_sku_recovery
+from dependency.solver.component_feasibility import evaluate_component_feasibility
 
 
 HARD_REJECTION_REASONS = {
@@ -13,6 +14,7 @@ HARD_REJECTION_REASONS = {
     "BACKUP_CAPACITY_NOT_AVAILABLE",
     "SHARED_UPSTREAM_DEPENDENCY",
     "CRITICAL_MATERIAL_SOURCE_UNAVAILABLE",
+    "CRITICAL_COMPONENT_SHORTAGE",
 }
 
 
@@ -147,6 +149,7 @@ def _purchase_order_candidates(sku: str, earliest_due: date) -> list[dict]:
 
 def _backup_candidate(
     *,
+    scenario_id: str,
     sku: str,
     backup: dict,
     affected_current_facilities: list[str],
@@ -183,6 +186,22 @@ def _backup_candidate(
     coverage_units = min(float(base_gap_units), available)
     coverage_ratio = 1.0 if base_gap_units <= 0 else min(1.0, coverage_units / base_gap_units)
 
+    component_feasibility = None
+    if coverage_units > 0 and backup.get("earliest_due_date"):
+        component_feasibility = evaluate_component_feasibility(
+            scenario_id=scenario_id,
+            sku=sku,
+            destination_facility_id=backup["facility_id"],
+            production_units=coverage_units,
+            need_by=backup["earliest_due_date"],
+        )
+        if component_feasibility["decision"] == "INFEASIBLE":
+            reasons.append("CRITICAL_COMPONENT_SHORTAGE")
+        elif component_feasibility["decision"] == "INSUFFICIENT_DATA":
+            reasons.append("COMPONENT_EVIDENCE_CONFIRMATION_REQUIRED")
+        elif component_feasibility["decision"] == "CONDITIONALLY_FEASIBLE":
+            reasons.append("COMPONENT_CAPACITY_CONFIRMATION_REQUIRED")
+
     if backup["requires_supplier_confirmation"]:
         reasons.append("SUPPLIER_CAPACITY_CONFIRMATION_REQUIRED")
     if residual_shortage > 0:
@@ -195,6 +214,8 @@ def _backup_candidate(
         residual_shortage > 0
         or backup["requires_supplier_confirmation"]
         or backup.get("requires_material_confirmation")
+        or "COMPONENT_EVIDENCE_CONFIRMATION_REQUIRED" in reasons
+        or "COMPONENT_CAPACITY_CONFIRMATION_REQUIRED" in reasons
     ):
         decision = "CONDITIONALLY_FEASIBLE"
     else:
@@ -210,6 +231,14 @@ def _backup_candidate(
             (coverage_ratio * 100)
             - (10 if backup["requires_supplier_confirmation"] else 0)
             - (10 if backup.get("requires_material_confirmation") else 0)
+            - (
+                15
+                if (
+                    "COMPONENT_EVIDENCE_CONFIRMATION_REQUIRED" in reasons
+                    or "COMPONENT_CAPACITY_CONFIRMATION_REQUIRED" in reasons
+                )
+                else 0
+            )
             - (2 * float(backup["setup_lead_days"]))
             - (35 if shared_dependencies else 0),
             1,
@@ -233,6 +262,7 @@ def _backup_candidate(
             "shared_dependency_count": len(shared_dependencies),
             "shared_dependencies": shared_dependencies,
             "material_path": backup.get("material_path"),
+            "component_feasibility": component_feasibility,
             "provenance_class": backup["provenance_class"],
         },
     }
@@ -407,6 +437,7 @@ def generate_recovery_candidates(
 
     backup_plans = [
         _backup_candidate(
+            scenario_id=scenario_id,
             sku=sku,
             backup=backup,
             affected_current_facilities=affected_current_facilities,

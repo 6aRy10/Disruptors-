@@ -29,6 +29,7 @@ from dependency.services.state_updates import (
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.candidates import generate_recovery_candidates
+from dependency.solver.component_feasibility import evaluate_component_feasibility
 from dependency.solver.portfolio import plan_event_recovery
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.solver.tariff import tariff_impact
@@ -258,6 +259,26 @@ def scenario_recovery(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/scenarios/{scenario_id}/components/{sku}")
+def scenario_component_feasibility(
+    scenario_id: str,
+    sku: str,
+    destination_facility_id: str,
+    production_units: float = Query(gt=0),
+    need_by: str = Query(),
+):
+    try:
+        return evaluate_component_feasibility(
+            scenario_id=scenario_id,
+            sku=sku,
+            destination_facility_id=destination_facility_id,
+            production_units=production_units,
+            need_by=need_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/scenarios/{scenario_id}/candidates/{sku}")

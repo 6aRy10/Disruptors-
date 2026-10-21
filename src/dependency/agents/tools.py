@@ -15,6 +15,7 @@ from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk
 from dependency.services.approvals import list_approval_requests, request_human_approval
 from dependency.solver.candidates import generate_recovery_candidates
+from dependency.solver.component_feasibility import evaluate_component_feasibility
 from dependency.solver.material_timing import purchase_order_supply_by_date
 from dependency.solver.portfolio import plan_event_recovery
 from dependency.solver.recovery import plan_sku_recovery
@@ -566,6 +567,7 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "get_open_purchase_orders": lambda: get_open_purchase_orders(**args),
         "check_backup_independence": lambda: backup_independence(**args),
         "generate_recovery_candidates": lambda: generate_recovery_candidates(**args),
+        "check_component_feasibility": lambda: evaluate_component_feasibility(**args),
         "get_recovery_plan": lambda: plan_sku_recovery(**args),
         "get_product_risk": lambda: scenario_product_risk(**args),
         "get_event_portfolio": lambda: plan_event_recovery(**args),
@@ -831,6 +833,30 @@ TOOL_SCHEMAS = [
                 "backup_facility_id": {"type": "string"},
             },
             "required": ["sku", "primary_facility_id", "backup_facility_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "check_component_feasibility",
+        "description": "Verify BOM component coverage for a proposed production quantity at one facility by a need-by date. Confirmed POs count only from explicit allocated sources; modeled source capacity stays provisional.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scenario_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "destination_facility_id": {"type": "string"},
+                "production_units": {"type": "number"},
+                "need_by": {"type": "string", "description": "ISO date YYYY-MM-DD"},
+            },
+            "required": [
+                "scenario_id",
+                "sku",
+                "destination_facility_id",
+                "production_units",
+                "need_by"
+            ],
             "additionalProperties": False,
         },
     },

@@ -101,6 +101,9 @@ jobs:
       - name: Test portfolio recovery
         run: python -m unittest tests.test_portfolio -v
 
+      - name: Test component feasibility
+        run: python -m unittest tests.test_component_feasibility -v
+
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
 

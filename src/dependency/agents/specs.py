@@ -62,6 +62,7 @@ IMPACT_INVESTIGATOR = AgentSpec(
         "trace_upstream_dependencies",
         "explode_bom",
         "get_inventory",
+        "check_component_feasibility",
         "get_customer_commitments",
         "check_backup_independence",
         "get_open_purchase_orders",
@@ -71,7 +72,7 @@ IMPACT_INVESTIGATOR = AgentSpec(
 Your job:
 - Follow only explicit graph edges.
 - Trace upstream source paths and downstream commercial impact.
-- Explode the BOM for affected quantities and inspect current inventory.
+- Explode the BOM for affected quantities, inspect current inventory, and verify critical-component timing for proposed production.
 - Trace affected facilities/materials into SKUs and customer commitments.
 - Check hidden shared dependencies where a nominal backup is relevant.
 - Check purchase-order timing when material availability is relevant.
@@ -89,6 +90,7 @@ RECOVERY_PLANNER = AgentSpec(
     tool_names=(
         "generate_recovery_candidates",
         "get_recovery_plan",
+        "check_component_feasibility",
         "get_supplier_capacity",
         "get_product_risk",
         "get_event_portfolio",
@@ -104,7 +106,7 @@ RECOVERY_PLANNER = AgentSpec(
 Your job:
 - Generate practical recovery actions across every operationally affected SKU.
 - Use the event portfolio tool before narrowing to a single product.
-- Use deterministic candidate and recovery tools before calling a plan feasible.
+- Use deterministic candidate, component-feasibility, and recovery tools before calling a plan feasible.
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.

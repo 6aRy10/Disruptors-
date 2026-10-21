@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from dependency.db.connection import connect, postgis_version
 from dependency.dashboard.snapshot import dashboard_snapshot
+from dependency.data.scale_stats import enterprise_data_stats
 from dependency.agents.orchestrator import run_event_autopilot, run_incident_agents
 from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.incidents.triage import triage_event
@@ -247,6 +248,11 @@ def _update_with_optional_replan(
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page():
     return (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+
+@app.get("/data/scale")
+def data_scale():
+    return enterprise_data_stats()
 
 
 @app.get("/dashboard/snapshot")

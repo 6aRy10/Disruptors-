@@ -94,7 +94,7 @@ button { cursor: pointer; }
 main { padding: 18px 22px 60px; }
 .metric-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(135px, 1fr));
+  grid-template-columns: repeat(7, minmax(125px, 1fr));
   gap: 9px;
   margin-bottom: 14px;
 }

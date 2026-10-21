@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dependency.db.connection import connect
+from dependency.data.scale_stats import enterprise_data_stats
 from dependency.graph.event_impact import (
     PHYSICAL_EVENT_TYPES,
     trace_business_event_impact,
@@ -306,7 +307,10 @@ def dashboard_snapshot(
     approved_unexecuted = _approved_unexecuted()
     executions = list_action_executions(limit=25)
 
+    scale = enterprise_data_stats()
+
     metrics = {
+        "operational_records": scale["operational_record_count"],
         "state_version": _state_version(),
         "open_incidents": len(open_incidents),
         "pending_approvals": len(pending_approvals),
@@ -335,6 +339,7 @@ def dashboard_snapshot(
     return {
         "metrics": metrics,
         "data_scale": _private_twin_stats(),
+        "data_scale": scale,
         "network": {
             "stats": network_stats(),
             "facilities": list_network_facilities(

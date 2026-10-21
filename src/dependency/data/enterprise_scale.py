@@ -11,8 +11,8 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[3]
 GENERATED = ROOT / "data" / "generated" / "private_twin"
 
-PRODUCT_COUNT = 450
-MATERIAL_VARIANTS = 12
+PRODUCT_COUNT = 2500
+MATERIAL_VARIANTS = 24
 ASSEMBLY_FACILITY_TARGET = 150
 SOURCE_FACILITY_TARGET = 90
 
@@ -471,6 +471,7 @@ def generate_enterprise_scale(
 
         families = FAMILIES[category]
         sku_materials: list[str] = []
+        sku_qty_by_material: dict[str, float] = {}
         for family_index, (family, _, _, _, base_qty) in enumerate(families):
             variant = ((product_index + family_index * 3) % MATERIAL_VARIANTS) + 1
             material_id = (
@@ -479,6 +480,7 @@ def generate_enterprise_scale(
             )
             sku_materials.append(material_id)
             qty = base_qty * (1.0 + ((product_index + family_index) % 4) * 0.04)
+            sku_qty_by_material[material_id] = round(qty, 4)
             bom.append(
                 {
                     "sku": sku,
@@ -592,11 +594,7 @@ def generate_enterprise_scale(
         po_materials = (critical_materials + sku_materials)[:5]
         for po_index, material_id in enumerate(po_materials, start=1):
             source = source_by_material[material_id][(product_index + po_index) % 2]
-            qty_per_unit = next(
-                row["qty_per_unit"]
-                for row in bom
-                if row["sku"] == sku and row["material_id"] == material_id
-            )
+            qty_per_unit = sku_qty_by_material[material_id]
             purchase_orders.append(
                 {
                     "po_id": f"DTPO-{product_index:05d}-{po_index:02d}",

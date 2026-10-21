@@ -124,6 +124,7 @@ function renderAll() {
 function renderMetrics() {
   const m = state.snapshot?.metrics || {};
   $("mState").textContent = number(m.state_version);
+  $("mRecords").textContent = number(m.operational_records);
   $("mIncidents").textContent = number(m.open_incidents);
   $("mProducts").textContent = number(m.selected_event_products);
   $("mRevenue").textContent = money(m.selected_event_revenue_eur);

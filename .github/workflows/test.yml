@@ -137,6 +137,9 @@ jobs:
       - name: Test de-hardcoding
         run: python -m unittest tests.test_dehardcoding -v
 
+      - name: Test enterprise-scale private twin
+        run: python -m unittest tests.test_enterprise_scale -v
+
       - name: Test portfolio recovery
         run: python -m unittest tests.test_portfolio -v
 

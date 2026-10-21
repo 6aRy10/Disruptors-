@@ -193,6 +193,7 @@ def normalize_anomaly_event(
         "event_id": f"PORTWATCH-{portid}-{date_key}",
         "event_type": "port_activity_anomaly",
         "source": "IMF PortWatch",
+        "provenance_class": "PUBLIC_DERIVED",
         "title": (
             f"{anomaly['status']} in container port calls at {port_name}"
         ),

@@ -179,6 +179,9 @@ jobs:
       - name: Test supplier outreach workflow
         run: python -m unittest tests.test_supplier_outreach -v
 
+      - name: Test multi-source event provenance
+        run: python -m unittest tests.test_event_provenance -v
+
       - name: Test event-type exposure engines
         run: python -m unittest tests.test_event_types -v
 

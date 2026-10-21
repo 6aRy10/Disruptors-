@@ -123,3 +123,10 @@ PowerShell window, run `python -m scripts.run_live_stack --watch` and stop
 with Ctrl+C. A green source status means feed and ingestion ran, not that any
 supplier was confirmed disrupted. Live observations do not automatically
 create private operational confirmations.
+
+## PortWatch provenance rule
+
+PortWatch reports public observations. A decline relative to a computed
+baseline is `PUBLIC_DERIVED`, not verified physical port closure. Exposure
+uses explicit private transport lanes. An observed decline must not directly
+close a transport lane or claim a confirmed late delivery.

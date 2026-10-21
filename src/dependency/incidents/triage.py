@@ -258,7 +258,7 @@ def triage_event(*, event_id: str, radius_km: float = 150.0) -> dict:
             source_url=event["source_url"],
             fact=public_fact,
             confidence=100.0,
-            provenance_class="VERIFIED_PUBLIC",
+            provenance_class=event["provenance_class"],
         )
 
         if impacted_products:

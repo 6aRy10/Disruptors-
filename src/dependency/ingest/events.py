@@ -22,6 +22,10 @@ def _parse_occurred_at(event: dict):
 
 
 def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
+    if event.get("provenance_class", "VERIFIED_PUBLIC") not in {
+        "VERIFIED_PUBLIC", "PUBLIC_DERIVED", "INFERRED", "SIMULATED_PRIVATE"
+    }:
+        raise ValueError("Invalid event provenance_class")
     occurred_at = _parse_occurred_at(event)
     ingested_at = datetime.now(UTC)
     source_url = event.get("detail_url")
@@ -41,7 +45,7 @@ def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
             ) VALUES (
               %s,%s,%s,%s,%s,%s,%s,%s,
               ST_SetSRID(ST_MakePoint(%s,%s),4326)::geography,
-              %s::jsonb,'VERIFIED_PUBLIC',%s
+              %s::jsonb,%s,%s
             )
             ON CONFLICT (event_id) DO UPDATE SET
               event_type=EXCLUDED.event_type,
@@ -60,7 +64,8 @@ def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
                 event["event_id"], event["event_type"], mode, event["source"], title,
                 occurred_at, ingested_at, ingested_at.date(),
                 float(event["longitude"]), float(event["latitude"]),
-                json.dumps(event.get("raw_json", event)), source_url,
+                json.dumps(event.get("raw_json", event)),
+                event.get("provenance_class", "VERIFIED_PUBLIC"), source_url,
             ),
         )
         if not existed:

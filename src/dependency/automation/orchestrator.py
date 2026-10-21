@@ -5,6 +5,7 @@ from typing import Any
 
 from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
+from dependency.investigation.tasks import create_investigation_tasks
 from dependency.memory.service import save_plan_snapshot
 from dependency.solver.portfolio import plan_event_recovery
 
@@ -115,11 +116,22 @@ def _process_external_event(
 
     scenario_id = triage.get("scenario_id")
     if not scenario_id:
+        # No event-specific operational state is known. Create evidence work;
+        # never invent a disruption, supplier capacity or recovery scenario.
+        tasks = create_investigation_tasks(
+            incident_id=triage["incident"]["incident_id"],
+            triage=triage,
+        )
         return {
-            "status": "AWAITING_OPERATIONAL_CONFIRMATION",
+            "status": "INVESTIGATION_REQUIRED",
             "event_id": event_id,
             "incident_id": triage["incident"]["incident_id"],
-            "triage": triage,
+            "scenario_id": None,
+            "investigation_task_count": len(tasks),
+            "priority_tasks": tasks[:10],
+            "required_evidence": triage.get("next_required_evidence", []),
+            "business_exposure": triage.get("commercial_totals", {}),
+            "claim_rule": "POTENTIAL_EXPOSURE_ONLY_NOT_CONFIRMED_LOSS",
         }
 
     if run_agents:

@@ -16,6 +16,7 @@ from dependency.data.scale_stats import enterprise_data_stats
 from dependency.agents.orchestrator import run_event_autopilot, run_incident_agents
 from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.incidents.triage import triage_event
+from dependency.investigation.tasks import list_investigation_tasks
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.event_impact import PHYSICAL_EVENT_TYPES, trace_business_event_impact
 from dependency.ingest.events import list_recent_events
@@ -337,6 +338,14 @@ def product_graph(sku: str):
         return product_dependency_graph(sku)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/investigations/tasks")
+def pending_investigation_tasks(
+    incident_id: str | None = None,
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    return {"tasks": list_investigation_tasks(incident_id=incident_id, limit=limit)}
 
 
 @app.get("/events")

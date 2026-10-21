@@ -291,6 +291,12 @@ def triage_event(*, event_id: str, radius_km: float = 150.0) -> dict:
         "incident": incident,
         "exposure_basis": exposure_basis,
         "public_facility_count": len(public_exposure),
+        "public_exposure": [
+            {"network_facility_id": row["network_facility_id"],
+             "distance_km": row["distance_km"],
+             "business_linked": row["business_linked"]}
+            for row in public_exposure
+        ],
         "business_linked_facility_count": len(linked_operational_ids),
         "business_linked_facility_ids": linked_operational_ids,
         "impacted_products": impacted_products,

@@ -10,6 +10,7 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.ingest.events import list_recent_events
 from dependency.memory.service import similar_incidents
+from dependency.investigation.tasks import list_investigation_tasks
 from dependency.services.approvals import list_approval_requests
 from dependency.services.execution import list_action_executions
 from dependency.solver.portfolio import plan_event_recovery
@@ -265,6 +266,7 @@ def dashboard_snapshot(
         limit=100,
     )
     supplier_requests = _supplier_requests()
+    investigation_tasks = list_investigation_tasks(limit=100)
     approved_unexecuted = _approved_unexecuted()
     executions = list_action_executions(limit=25)
 
@@ -291,6 +293,7 @@ def dashboard_snapshot(
         "pending_approvals": len(pending_approvals),
         "approved_actions_waiting_execution": len(approved_unexecuted),
         "active_supplier_requests": len(supplier_requests),
+        "open_investigation_tasks": len(investigation_tasks),
         "public_facilities_potentially_exposed": len(public_exposure),
         "selected_event_products": (
             len((impact or {}).get("products", []))
@@ -337,6 +340,7 @@ def dashboard_snapshot(
             "approved_actions_waiting_execution": approved_unexecuted,
             "executions": executions,
             "supplier_requests": supplier_requests,
+            "investigation_tasks": investigation_tasks,
             "memory_hypotheses": memory_hypotheses,
         },
         "truth_model": {

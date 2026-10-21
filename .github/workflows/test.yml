@@ -164,6 +164,9 @@ jobs:
       - name: Test unified live ingestion and orchestration
         run: python -m unittest tests.test_live_stack -v
 
+      - name: Test live evidence task construction
+        run: python -m unittest tests.test_investigation_tasks tests.test_live_investigation -v
+
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
 

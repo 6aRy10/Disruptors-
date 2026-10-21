@@ -68,3 +68,12 @@ performed by this repo preflight.
 
 The fallback demo uses the known-good local PostGIS and transactional
 outbox; Kafka and all external services must be optional for that demo.
+
+### Consumer identity safety
+
+The local outbox worker and Aiven Kafka consumer now use the same
+`incident-orchestrator` idempotency identity and PostgreSQL records.
+The consumer subscribes to executed-action events as well. During Kafka
+cutover, **run only one active event consumer**: this prevents overlapping
+handlers from racing before idempotency commits. Sequential redelivery is
+safe; concurrent exactly-once delivery is not guaranteed yet.

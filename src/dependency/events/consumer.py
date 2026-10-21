@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import os
 
-from dependency.automation.orchestrator import process_event_envelope
+from dependency.automation.orchestrator import DEFAULT_CONSUMER, process_event_envelope
 from dependency.events.bus import (
     TOPIC_APPROVAL_REQUESTED,
+    TOPIC_ACTION_EXECUTED,
     TOPIC_BUSINESS_STATE,
     TOPIC_DECISION_CONFIRMED,
     TOPIC_EXTERNAL_EVENTS,
@@ -30,6 +31,7 @@ DEFAULT_TOPICS = (
     TOPIC_SUPPLIER_CONFIRMATION_REQUESTED,
     TOPIC_SUPPLIER_CONFIRMATION_REPLY,
     TOPIC_DECISION_CONFIRMED,
+    TOPIC_ACTION_EXECUTED,
 )
 
 
@@ -74,7 +76,7 @@ def decode_envelope(raw_value: bytes | str) -> dict:
 def run_kafka_consumer(
     *,
     topics: tuple[str, ...] = DEFAULT_TOPICS,
-    consumer_name: str = "aiven-incident-orchestrator",
+    consumer_name: str = DEFAULT_CONSUMER,
     run_agents: bool = False,
     radius_km: float = 150.0,
     poll_timeout: float = 1.0,

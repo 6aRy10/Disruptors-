@@ -188,6 +188,9 @@ jobs:
       - name: Test unscripted event creates persisted investigation queue
         run: python -m unittest tests.test_live_investigation_db -v
 
+      - name: Test evidence outreach draft safety
+        run: python -m unittest tests.test_outreach_drafts -v
+
       - name: Test live evidence task construction
         run: python -m unittest tests.test_investigation_tasks tests.test_live_investigation -v
 

@@ -20,6 +20,7 @@ from dependency.investigation.tasks import (
     list_investigation_tasks,
     confirm_facility_investigation,
 )
+from dependency.investigation.outreach import prepare_investigation_outreach
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.event_impact import PHYSICAL_EVENT_TYPES, trace_business_event_impact
 from dependency.ingest.events import list_recent_events
@@ -361,6 +362,14 @@ def product_graph(sku: str):
         return product_dependency_graph(sku)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/investigations/tasks/{task_id}/prepare-outreach")
+def draft_investigation_outreach(task_id: str):
+    try:
+        return prepare_investigation_outreach(task_id=task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
 
 
 @app.post("/investigations/tasks/{task_id}/confirm-facility")

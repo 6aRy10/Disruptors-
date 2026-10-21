@@ -320,6 +320,14 @@ def confirm_facility_investigation(
         )
         conn.execute(
             """
+            UPDATE investigation_outreach_drafts
+            SET status='EVIDENCE_RECORDED',updated_at=now()
+            WHERE task_id=%s
+            """,
+            (task_id,),
+        )
+        conn.execute(
+            """
             UPDATE incident_investigation_tasks
             SET status='RESOLVED',resolved_at=now(),resolved_by=%s,
                 resolution_json=%s::jsonb,updated_at=now()

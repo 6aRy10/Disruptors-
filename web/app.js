@@ -456,6 +456,8 @@ function renderOperations() {
         </span>
       </div>
       <div class="mini-actions">
+        <button class="mini-button prepare-outreach-task"
+                data-task-id="${esc(row.task_id)}">Prepare evidence request</button>
         ${row.task_type === "CONFIRM_FACILITY_STATUS" ? `
           <button class="mini-button confirm-facility-task"
                   data-task-id="${esc(row.task_id)}">Record confirmed facility state</button>
@@ -463,6 +465,9 @@ function renderOperations() {
       </div>
     </div>
   `).join("") || '<div class="muted">No open investigation tasks for the selected event.</div>';
+  document.querySelectorAll(".prepare-outreach-task").forEach(button => {
+    button.addEventListener("click", () => prepareEvidenceOutreach(button.dataset.taskId));
+  });
   document.querySelectorAll(".confirm-facility-task").forEach(button => {
     button.addEventListener("click", () => confirmFacilityTask(button.dataset.taskId));
   });
@@ -516,6 +521,20 @@ function renderOperations() {
   document.querySelectorAll(".execute-btn").forEach(btn => {
     btn.addEventListener("click", () => executeApproval(btn.dataset.requestId));
   });
+}
+
+async function prepareEvidenceOutreach(taskId) {
+  try {
+    const draft = await api(`/investigations/tasks/${encodeURIComponent(taskId)}/prepare-outreach`, {
+      method: "POST"
+    });
+    // Copyable review surface, no simulated contact is automatically messaged.
+    window.prompt(
+      `Draft: ${draft.status}. Contact: ${draft.recipient_name || "not modeled"}. Nothing has been sent. Copy for authorized review:`,
+      draft.message_text
+    );
+    toast("Evidence request prepared; no external message sent.");
+  } catch (error) { toast(error.message, true); }
 }
 
 async function confirmFacilityTask(taskId) {

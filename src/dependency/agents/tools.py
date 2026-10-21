@@ -197,11 +197,19 @@ def normalize_company(name: str, country: str | None = None, limit: int = 5) -> 
 
     scored = []
     query = str(name or "").strip().lower()
+    query_key = "".join(ch for ch in query if ch.isalnum())
     for row in rows:
         candidate_text = " ".join(
             x for x in [row[2], row[3], row[6]] if x
         ).lower()
-        score = float(token_set_ratio(query, candidate_text))
+        name_key = "".join(ch for ch in str(row[2] or "").lower() if ch.isalnum())
+        official_key = "".join(
+            ch for ch in str(row[3] or "").lower() if ch.isalnum()
+        )
+        if query_key and query_key in {name_key, official_key}:
+            score = 100.0
+        else:
+            score = float(token_set_ratio(query, candidate_text))
         scored.append(
             {
                 "network_facility_id": row[0],

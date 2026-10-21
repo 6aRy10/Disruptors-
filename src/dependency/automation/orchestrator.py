@@ -233,6 +233,7 @@ def handle_event(
         "supplier.capacity.updated",
         "incident.detected",
         "plan.generated",
+        "approval.requested",
         "decision.confirmed",
     }:
         return {

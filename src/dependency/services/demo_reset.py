@@ -135,6 +135,7 @@ def reset_demo_state() -> dict:
             )
 
         conn.execute("DELETE FROM supplier_capacity_observations")
+        conn.execute("DELETE FROM approval_requests")
         conn.execute("DELETE FROM incident_decisions")
         conn.execute("DELETE FROM incident_plan_history")
         conn.execute("DELETE FROM incident_evidence")

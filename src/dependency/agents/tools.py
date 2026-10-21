@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from datetime import date
 from typing import Any
 
@@ -11,6 +13,7 @@ from dependency.graph.impact import trace_event_impact
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk
+from dependency.services.approvals import list_approval_requests, request_human_approval
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.material_timing import purchase_order_supply_by_date
 from dependency.solver.portfolio import plan_event_recovery
@@ -493,6 +496,48 @@ def find_similar_incidents(event_type: str, limit: int = 5) -> dict:
         "incidents": similar_incidents(event_type=event_type, limit=limit),
     }
 
+
+def request_human_approval_tool(
+    incident_id: str,
+    scenario_id: str | None,
+    sku: str | None,
+    action_type: str,
+    action_payload_json: str,
+    reason: str,
+    plan_record_id: str | None,
+) -> dict:
+    try:
+        payload = json.loads(action_payload_json or "{}")
+    except json.JSONDecodeError as exc:
+        raise ValueError("action_payload_json must be valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("action_payload_json must decode to an object")
+    return request_human_approval(
+        incident_id=incident_id,
+        scenario_id=scenario_id,
+        sku=sku,
+        action_type=action_type,
+        action_payload=payload,
+        reason=reason,
+        requested_by="Recovery Planner",
+        plan_record_id=plan_record_id,
+    )
+
+
+def get_pending_approvals(
+    incident_id: str | None,
+    limit: int = 20,
+) -> dict:
+    return {
+        "incident_id": incident_id,
+        "status": "PENDING",
+        "approvals": list_approval_requests(
+            status="PENDING",
+            incident_id=incident_id,
+            limit=limit,
+        ),
+    }
+
 def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
     tools = {
         "get_event": lambda: get_event(**args),
@@ -505,6 +550,8 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "get_approved_alternatives": lambda: get_approved_alternatives(**args),
         "get_transport_options": lambda: get_transport_options(**args),
         "find_similar_incidents": lambda: find_similar_incidents(**args),
+        "request_human_approval": lambda: request_human_approval_tool(**args),
+        "get_pending_approvals": lambda: get_pending_approvals(**args),
         "trace_downstream_impact": lambda: trace_event_impact(**args),
         "get_customer_commitments": lambda: get_customer_commitments(**args),
         "get_supplier_capacity": lambda: get_supplier_capacity(**args),
@@ -660,6 +707,49 @@ TOOL_SCHEMAS = [
                 "limit": {"type": "integer"},
             },
             "required": ["event_type", "limit"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "request_human_approval",
+        "description": "Create a durable human-approval request. This records a request only; it does not execute the action.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "incident_id": {"type": "string"},
+                "scenario_id": {"type": ["string", "null"]},
+                "sku": {"type": ["string", "null"]},
+                "action_type": {"type": "string"},
+                "action_payload_json": {"type": "string"},
+                "reason": {"type": "string"},
+                "plan_record_id": {"type": ["string", "null"]},
+            },
+            "required": [
+                "incident_id",
+                "scenario_id",
+                "sku",
+                "action_type",
+                "action_payload_json",
+                "reason",
+                "plan_record_id"
+            ],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_pending_approvals",
+        "description": "Return pending human-approval requests, optionally limited to one incident.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "incident_id": {"type": ["string", "null"]},
+                "limit": {"type": "integer"},
+            },
+            "required": ["incident_id", "limit"],
             "additionalProperties": False,
         },
     },

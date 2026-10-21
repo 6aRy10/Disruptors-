@@ -63,6 +63,7 @@ def load() -> None:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
 
         # Deterministic demo reset for transient incident/event state.
+        conn.execute("DELETE FROM approval_requests")
         conn.execute("DELETE FROM incident_decisions")
         conn.execute("DELETE FROM incident_plan_history")
         conn.execute("DELETE FROM incident_evidence")

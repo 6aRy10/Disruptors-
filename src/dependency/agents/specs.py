@@ -95,6 +95,8 @@ RECOVERY_PLANNER = AgentSpec(
         "get_approved_alternatives",
         "get_transport_options",
         "find_similar_incidents",
+        "request_human_approval",
+        "get_pending_approvals",
         "check_backup_independence",
     ),
     instructions=COMMON_GUARDRAILS
@@ -106,6 +108,8 @@ Your job:
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.
+- Create a durable approval request when a proposed action needs human permission.
+- Never treat a pending approval request as an approval.
 - Check approved material/source alternatives and transport lanes before recommending a move.
 - Use similar incidents only as hypotheses; recheck current capacity, inventory, and timing.
 - Prefer protecting priority commitments and margin only within the deterministic policy.

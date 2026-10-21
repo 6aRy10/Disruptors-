@@ -25,6 +25,8 @@ class AgentContractTests(unittest.TestCase):
         self.assertIn("get_recovery_plan", AGENTS["recovery"].tool_names)
         self.assertIn("get_supplier_capacity", AGENTS["recovery"].tool_names)
         self.assertIn("get_event_portfolio", AGENTS["recovery"].tool_names)
+        self.assertIn("request_human_approval", AGENTS["recovery"].tool_names)
+        self.assertIn("get_pending_approvals", AGENTS["recovery"].tool_names)
 
 
 if __name__ == "__main__":

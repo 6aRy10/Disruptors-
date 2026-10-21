@@ -1,6 +1,7 @@
 import unittest
 
 from dependency.events.bus import (
+    TOPIC_APPROVAL_REQUESTED,
     TOPIC_BUSINESS_STATE,
     TOPIC_DECISION_CONFIRMED,
     TOPIC_EXTERNAL_EVENTS,
@@ -21,6 +22,7 @@ class EventBusTests(unittest.TestCase):
         self.assertEqual(TOPIC_INCIDENT_DETECTED, "incident.detected")
         self.assertEqual(TOPIC_PLAN_GENERATED, "plan.generated")
         self.assertEqual(TOPIC_PLAN_INVALIDATED, "plan.invalidated")
+        self.assertEqual(TOPIC_APPROVAL_REQUESTED, "approval.requested")
         self.assertEqual(TOPIC_DECISION_CONFIRMED, "decision.confirmed")
 
     def test_local_transactional_outbox_retains_event(self):

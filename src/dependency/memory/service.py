@@ -384,6 +384,19 @@ def get_incident_memory(incident_id: str) -> dict:
             (incident_id,),
         ).fetchall()
 
+        approvals = conn.execute(
+            """
+            SELECT
+              request_id,scenario_id,plan_record_id,sku,action_type,action_payload,
+              reason,requested_by,status,requested_at,decided_at,decided_by,
+              decision_reason
+            FROM approval_requests
+            WHERE incident_id=%s
+            ORDER BY requested_at,request_id
+            """,
+            (incident_id,),
+        ).fetchall()
+
         runs = conn.execute(
             """
             SELECT run_id,agent_name,model,output_text,tool_trace,state_version,created_at
@@ -454,6 +467,24 @@ def get_incident_memory(incident_id: str) -> dict:
                 "outcome": r[6],
             }
             for r in decisions
+        ],
+        "approvals": [
+            {
+                "request_id": r[0],
+                "scenario_id": r[1],
+                "plan_record_id": r[2],
+                "sku": r[3],
+                "action_type": r[4],
+                "action_payload": r[5],
+                "reason": r[6],
+                "requested_by": r[7],
+                "status": r[8],
+                "requested_at": r[9].isoformat(),
+                "decided_at": r[10].isoformat() if r[10] else None,
+                "decided_by": r[11],
+                "decision_reason": r[12],
+            }
+            for r in approvals
         ],
         "agent_runs": [
             {

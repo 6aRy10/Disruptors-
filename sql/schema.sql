@@ -391,6 +391,27 @@ CREATE TABLE IF NOT EXISTS incident_plan_history (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS approval_requests (
+  request_id text PRIMARY KEY,
+  incident_id text NOT NULL REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  scenario_id text REFERENCES scenarios(scenario_id),
+  plan_record_id text REFERENCES incident_plan_history(plan_record_id),
+  sku text,
+  action_type text NOT NULL,
+  action_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  reason text NOT NULL,
+  requested_by text NOT NULL,
+  status text NOT NULL CHECK (status IN ('PENDING','APPROVED','REJECTED','CANCELLED')),
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz,
+  decided_by text,
+  decision_reason text
+);
+CREATE INDEX IF NOT EXISTS approval_requests_status_idx
+  ON approval_requests(status, requested_at);
+CREATE INDEX IF NOT EXISTS approval_requests_incident_idx
+  ON approval_requests(incident_id, requested_at);
+
 CREATE TABLE IF NOT EXISTS incident_decisions (
   decision_id text PRIMARY KEY,
   incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,

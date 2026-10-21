@@ -12,6 +12,11 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
+from dependency.services.approvals import (
+    decide_approval,
+    list_approval_requests,
+    request_human_approval,
+)
 from dependency.services.demo_reset import reset_demo_state
 from dependency.services.scenarios import confirm_event_facility_state
 from dependency.services.state_updates import (
@@ -129,6 +134,23 @@ class TariffImpactRequest(BaseModel):
     additional_rate: float = Field(ge=0)
     units: int = Field(ge=0)
     baseline_unit_margin: float
+
+class ApprovalRequestBody(BaseModel):
+    incident_id: str
+    scenario_id: str | None = None
+    plan_record_id: str | None = None
+    sku: str | None = None
+    action_type: str
+    action_payload: dict = Field(default_factory=dict)
+    reason: str
+    requested_by: str = "Human Planner"
+
+
+class ApprovalDecisionBody(BaseModel):
+    decision: str
+    decided_by: str
+    decision_reason: str
+
 
 class CapacityConfirmation(BaseModel):
     facility_id: str
@@ -480,6 +502,51 @@ def agents_run_incident(body: AgentIncidentRequest):
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/approvals")
+def create_approval(body: ApprovalRequestBody):
+    try:
+        return request_human_approval(
+            incident_id=body.incident_id,
+            scenario_id=body.scenario_id,
+            plan_record_id=body.plan_record_id,
+            sku=body.sku,
+            action_type=body.action_type,
+            action_payload=body.action_payload,
+            reason=body.reason,
+            requested_by=body.requested_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/approvals")
+def approvals(
+    status: str | None = Query(default="PENDING"),
+    incident_id: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    return {
+        "approvals": list_approval_requests(
+            status=status,
+            incident_id=incident_id,
+            limit=limit,
+        )
+    }
+
+
+@app.post("/approvals/{request_id}/decision")
+def approval_decision(request_id: str, body: ApprovalDecisionBody):
+    try:
+        return decide_approval(
+            request_id=request_id,
+            decision=body.decision,
+            decided_by=body.decided_by,
+            decision_reason=body.decision_reason,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

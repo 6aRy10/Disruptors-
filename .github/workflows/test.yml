@@ -103,3 +103,6 @@ jobs:
 
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
+
+      - name: Test human approval workflow
+        run: python -m unittest tests.test_approvals -v

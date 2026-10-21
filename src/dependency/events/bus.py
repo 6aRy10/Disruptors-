@@ -12,6 +12,7 @@ TOPIC_SUPPLIER_CAPACITY = "supplier.capacity.updated"
 TOPIC_INCIDENT_DETECTED = "incident.detected"
 TOPIC_PLAN_GENERATED = "plan.generated"
 TOPIC_PLAN_INVALIDATED = "plan.invalidated"
+TOPIC_APPROVAL_REQUESTED = "approval.requested"
 TOPIC_DECISION_CONFIRMED = "decision.confirmed"
 
 

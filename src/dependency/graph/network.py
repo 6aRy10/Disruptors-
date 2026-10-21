@@ -12,7 +12,7 @@ def network_stats() -> dict:
             "SELECT COUNT(*) FROM network_facilities WHERE geom IS NOT NULL"
         ).fetchone()[0]
         relationship_count = conn.execute(
-            "SELECT COUNT(*) FROM network_list_relationships"
+            "SELECT COUNT(*) FROM network_facility_relationships"
         ).fetchone()[0]
         parent_count = conn.execute(
             "SELECT COUNT(*) FROM network_parent_groups"

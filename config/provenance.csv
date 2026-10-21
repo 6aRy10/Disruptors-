@@ -1,0 +1,15 @@
+dataset_or_edge,class,meaning
+Adidas factory nodes,VERIFIED_PUBLIC,Factory/supplier disclosure comes from official Adidas 2026 list.
+Coordinates,PUBLIC_DERIVED,Coordinates joined from user-provided facility export to official Adidas names/addresses.
+Corporate parent,VERIFIED_PUBLIC,Disclosed parent organization. Corporate concentration is not proof of shared physical supply.
+Product identity/material descriptions,VERIFIED_PUBLIC/PUBLIC_DERIVED,Official Adidas product pages.
+Factory -> SKU,SIMULATED_PRIVATE,Would come from ERP/PLM in a customer deployment.
+Material -> SKU BOM quantities,SIMULATED_PRIVATE,Would come from PLM/BOM systems.
+T2 facility -> material/SKU allocation,SIMULATED_PRIVATE,T2 facility is public; exact material allocation is private.
+Inventory/orders/capacity/margins,SIMULATED_PRIVATE,Would come from ERP/WMS/OMS/procurement systems.
+Indonesia earthquake,VERIFIED_PUBLIC,USGS event/date/severity are real.
+Yantian disruption,VERIFIED_PUBLIC,Maersk operational advisory and UN/LOCODE are public.
+Vietnam reciprocal tariff policy,VERIFIED_PUBLIC,USTR/White House policy sources are real.
+Vietnam product HTS/exception flag,SIMULATED_PRIVATE,Demo classification/applicability is not claimed as public Adidas data.
+Distance/intersection calculations,PUBLIC_DERIVED,Computed from public event geometry and enriched facility coordinates.
+Transport lane usage,SIMULATED_PRIVATE,Would come from TMS/ERP/logistics systems.

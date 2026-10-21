@@ -1,0 +1,14 @@
+sku,facility_id,role,approved,setup_lead_days,provenance_class,note
+JI2993,ADI26-0226,primary_assembly,True,0,SIMULATED_PRIVATE,Indonesia earthquake deep dive. Real Adidas footwear facility; SKU allocation is private demo data.
+JI2993,ADI26-0225,nominal_backup,True,1,SIMULATED_PRIVATE,"Same West Java hazard region as primary; common parent is corporate concentration, not proof of shared physical source."
+JI2993,ADI26-0240,independent_backup,True,2,SIMULATED_PRIVATE,Independent approved backup used for supplier-capacity Slack confirmation loop.
+JQ6656,ADI26-0233,primary_assembly,True,0,SIMULATED_PRIVATE,Second footwear SKU in Indonesia event region; allocation is private demo data.
+JQ6656,ADI26-0228,independent_backup,True,3,SIMULATED_PRIVATE,Independent Java backup outside main Cianjur exposure radius.
+KJ7436,ADI26-0683,primary_assembly,True,0,SIMULATED_PRIVATE,Vietnam primary footwear site used for the trade-policy scenario. SKU allocation is private demo data.
+KJ7436,ADI26-0371,regional_backup,True,3,SIMULATED_PRIVATE,"Vietnam backup footwear site; trade-policy exposure depends on origin/destination/classification, not physical damage."
+IR9492,ADI26-0429,primary_assembly,True,0,SIMULATED_PRIVATE,Vietnam apparel site used for the trade-policy scenario. SKU allocation is private demo data.
+IR9492,ADI26-0372,regional_backup,True,3,SIMULATED_PRIVATE,Vietnam apparel backup; trade-policy exposure depends on origin/destination/classification.
+KS8920,ADI26-0083,primary_assembly,True,0,SIMULATED_PRIVATE,Dongguan apparel factory. Demo transport lane uses Yantian; route is private data.
+KS8920,ADI26-0043,backup_assembly,True,4,SIMULATED_PRIVATE,Cambodia backup.
+IU7704,ADI26-0085,primary_assembly,True,0,SIMULATED_PRIVATE,Dongguan accessories factory. Demo transport lane uses Yantian; route is private data.
+IU7704,ADI26-0053,backup_assembly,True,4,SIMULATED_PRIVATE,Cambodia backup.

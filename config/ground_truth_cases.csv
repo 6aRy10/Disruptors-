@@ -1,0 +1,11 @@
+case_id,case_name,input,expected_result,guardrail
+GT01,Global board,Load guaranteed scenarios,Indonesia 80.3 CRITICAL; Vietnam tariff 63.7 HIGH; Yantian 62.4 HIGH; Indonesia ranked first.,Exactly three guaranteed cards; live feed is separate.
+GT02,Date/mode truth,Render cards,Historical incidents show original date + REPLAY badge; Vietnam tariff shows ACTIVE_POLICY; live events keep actual current timestamps.,Never rewrite a historical event date as today.
+GT03,Indonesia proximity,Replay USGS us7000ir9t,20 current Adidas facilities within 150 km; 4 within 50 km.,All are POTENTIALLY_EXPOSED until corroborated.
+GT04,Indonesia product impact,Private state confirms selected material/assembly nodes unavailable,JI2993 critical; JQ6656 high; non-connected catalogue products not automatically affected.,Factory-to-SKU/material links are SIMULATED_PRIVATE.
+GT05,Supplier confirmation,Backup capacity evidence age = 72h,Outreach Agent asks independent backup supplier for current capacity.,No LLM guess becomes operational truth.
+GT06,Supplier reply,"Capacity has declined to 5,500 pairs per week until 2026-11-04.","Parser proposes 5,500/week through 4 Nov and requires confirmation.",Database unchanged before confirmation.
+GT07,Confirmed capacity shock,"Supplier confirms 5,500/week","state_version increments; old scenario stale; JI2993 risk becomes 90. Finished inventory 2,100 + usable backup 3,500 = 5,600 for 9,500 demand.",Solver performs allocation/money math.
+GT08,Vietnam tariff,KJ7436 Vietnam-origin North America order; private tariff_applicable=true; customs value equivalent 60/unit,"20% additional tariff = 12/unit; 2,500 units = 30,000 additional cost equivalent; unit margin falls by 12 if price unchanged.",Public policy is real; product classification/applicability and economics are SIMULATED_PRIVATE.
+GT09,Yantian logistics,Private lane for KS8920/IU7704 uses CNYTN; replay adds 14-day delay,ETA shifts; commitments due before new ETA become at risk. Nearby factories without CNYTN lane are not affected.,Proximity to port is not route dependence.
+GT10,Far/no-impact control,Replay event or policy that matches no graph edge,No business incident/product risk created.,Prevents false positives.

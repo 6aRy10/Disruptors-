@@ -1,0 +1,19 @@
+order_id,customer,market,sku,qty,due_date,unit_revenue_eur,unit_margin_eur,priority,revenue_eur,gross_margin_eur,partial_allowed,provenance_class
+ORD-JI-EU,Europe distribution commitment,Europe,JI2993,4000,2026-10-29,130,55,1,520000,220000,True,SIMULATED_PRIVATE
+ORD-JI-NA,North America wholesale commitment,North America,JI2993,3000,2026-10-30,130,50,2,390000,150000,True,SIMULATED_PRIVATE
+ORD-JI-GC,Greater China replenishment commitment,Greater China,JI2993,2500,2026-10-31,130,52,3,325000,130000,True,SIMULATED_PRIVATE
+ORD-KJ7436-1,Europe distribution commitment,Europe,KJ7436,3000,2026-11-02,120,50,1,360000,150000,True,SIMULATED_PRIVATE
+ORD-KJ7436-2,North America distribution commitment,North America,KJ7436,2500,2026-11-03,120,47,2,300000,117500,True,SIMULATED_PRIVATE
+ORD-KJ7436-3,Greater China distribution commitment,Greater China,KJ7436,1500,2026-11-04,120,49,3,180000,73500,True,SIMULATED_PRIVATE
+ORD-JQ6656-1,Europe distribution commitment,Europe,JQ6656,2500,2026-11-02,180,75,1,450000,187500,True,SIMULATED_PRIVATE
+ORD-JQ6656-2,North America distribution commitment,North America,JQ6656,2200,2026-11-03,180,70,2,396000,154000,True,SIMULATED_PRIVATE
+ORD-JQ6656-3,Greater China distribution commitment,Greater China,JQ6656,1800,2026-11-04,180,72,3,324000,129600,True,SIMULATED_PRIVATE
+ORD-IR9492-1,Europe distribution commitment,Europe,IR9492,4500,2026-11-02,55,22,1,247500,99000,True,SIMULATED_PRIVATE
+ORD-IR9492-2,North America distribution commitment,North America,IR9492,3000,2026-11-03,55,20,2,165000,60000,True,SIMULATED_PRIVATE
+ORD-IR9492-3,Greater China distribution commitment,Greater China,IR9492,2500,2026-11-04,55,21,3,137500,52500,True,SIMULATED_PRIVATE
+ORD-KS8920-1,Europe distribution commitment,Europe,KS8920,3500,2026-11-02,60,24,1,210000,84000,True,SIMULATED_PRIVATE
+ORD-KS8920-2,North America distribution commitment,North America,KS8920,3000,2026-11-03,60,22,2,180000,66000,True,SIMULATED_PRIVATE
+ORD-KS8920-3,Greater China distribution commitment,Greater China,KS8920,2000,2026-11-04,60,23,3,120000,46000,True,SIMULATED_PRIVATE
+ORD-IU7704-1,Europe distribution commitment,Europe,IU7704,2500,2026-11-02,60,25,1,150000,62500,True,SIMULATED_PRIVATE
+ORD-IU7704-2,North America distribution commitment,North America,IU7704,2000,2026-11-03,60,23,2,120000,46000,True,SIMULATED_PRIVATE
+ORD-IU7704-3,Greater China distribution commitment,Greater China,IU7704,1500,2026-11-04,60,24,3,90000,36000,True,SIMULATED_PRIVATE

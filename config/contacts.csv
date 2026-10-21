@@ -1,0 +1,3 @@
+contact_id,entity_type,entity_id,name,channel,address,can_confirm_operational_data,provenance_class
+CNT-PLANNER,internal_owner,GLOBAL-SUPPLY-RISK,Global Supply Risk Planner,Slack,U_DEMO_PLANNER,False,SIMULATED_PRIVATE
+CNT-HS,supplier_facility,ADI26-0240,Hwa Seung Capacity Contact,Slack Connect,U_DEMO_SUPPLIER,True,SIMULATED_PRIVATE

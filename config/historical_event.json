@@ -1,0 +1,24 @@
+{
+  "event_id": "IDN-CIANJUR-2022-USGS-us7000ir9t",
+  "mode": "REPLAY",
+  "event_type": "earthquake",
+  "occurred_at": "2022-11-21",
+  "current_as_of": "2026-10-21",
+  "source": "USGS",
+  "source_url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000ir9t/pager",
+  "latitude": -6.836,
+  "longitude": 106.997,
+  "depth_km": 10,
+  "magnitude": 5.6,
+  "risk_factors": {
+    "disruption_severity": 82,
+    "dependency_criticality": 86,
+    "time_urgency": 74,
+    "commercial_exposure": 72,
+    "recovery_difficulty": 88
+  },
+  "business_risk_score": 80.3,
+  "evidence_confidence": 92,
+  "risk_band": "CRITICAL",
+  "note": "Historical real event replayed against current 2026 network. Proximity means potential exposure only."
+}

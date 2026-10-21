@@ -1,0 +1,13 @@
+source_id,source_name,source_url,provenance_class,use
+SRC-ADIDAS-2026,Adidas 2026 Global Factory List,https://www.adidas-group.com/en/sustainability/transparency/supplier-lists,VERIFIED_PUBLIC,Supplier/factory network. User uploaded official July 2026 XLSX.
+SRC-USER-FACILITIES,User facilities.csv,conversation upload,PUBLIC_DERIVED,Coordinates/OS Hub IDs used to enrich official Adidas rows after matching.
+SRC-USGS-CIANJUR,USGS us7000ir9t,https://earthquake.usgs.gov/earthquakes/eventpage/us7000ir9t/pager,VERIFIED_PUBLIC,"M5.6 Cianjur/Sukabumi earthquake, 21 Nov 2022, PAGER Orange."
+SRC-USTR-VNM,USTR U.S.-Vietnam reciprocal trade framework,https://www.ustr.gov/about/policy-offices/press-office/fact-sheets/2025/october/fact-sheet-united-states-and-viet-nam-reach-framework-agreement-reciprocal-fair-and-balanced-trade,VERIFIED_PUBLIC,"States U.S. will maintain 20% reciprocal tariff rate on imports of Vietnam, with specified exceptions/zero-rate treatment."
+SRC-WH-VNM,White House U.S.-Vietnam framework,https://www.whitehouse.gov/briefings-statements/2025/10/joint-statement-on-united-states-vietnam-framework-for-an-agreement-on-reciprocal-fair-and-balanced-trade/,VERIFIED_PUBLIC,Supporting public policy source.
+SRC-MAERSK-YANTIAN,Maersk Yantian operations advisory,https://www.maersk.com/news/articles/2021/05/27/greater-china-yantian-port-operations-update,VERIFIED_PUBLIC,"Documents western-area suspension, congestion, vessel omissions and large delays in May-Jun 2021."
+SRC-UNLOCODE-YANTIAN,UN/LOCODE China CNYTN,https://service.unece.org/trade/locode/cn.htm,VERIFIED_PUBLIC,Yantian location CNYTN.
+SRC-RISKWISE,RiskWise public repo,https://github.com/oh-qi-qi/azure-ai-agent-hackathon-2025,VERIFIED_PUBLIC,Winner architecture/product patterns.
+SRC-GSCR,GSCR Agentic Control Center,https://github.com/iamanum/GSCR-Agent-Hackathon,VERIFIED_PUBLIC,Detection-to-mitigation/human approval pattern.
+SRC-SCDM,Supply Chain Disruption Monitoring,https://github.com/sara-almahri/supply-chain-disruption-monitoring,VERIFIED_PUBLIC,Multi-tier graph + deterministic risk + evaluation patterns.
+SRC-SCM-AW,SCM Agentic Workflow,https://github.com/sounakss7/SCM_AGENTIC_WORKFLOW,VERIFIED_PUBLIC,Deterministic solver + 100-scenario benchmark pattern.
+SRC-RH-AI-SC,Red Hat AI Supply Chain Agent,https://github.com/rh-ai-quickstart/ai-supply-chain-agent,VERIFIED_PUBLIC,Replayable scenario + live feed pattern.

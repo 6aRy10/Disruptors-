@@ -1,0 +1,3 @@
+event_id,sku,origin_country,destination_market,classification_id,tariff_applicable,customs_value_eur_equiv_per_unit,additional_tariff_rate,additional_cost_per_unit_eur_equiv,affected_units,incremental_cost_eur_equiv,provenance_class,note
+VNM-US-RECIPROCAL-TARIFF-2025,KJ7436,Vietnam,North America,HTS_DEMO_KJ7436,True,60,0.2,12,2500,30000,SIMULATED_PRIVATE,Policy/rate public; product HTS/exception flag and customs-value economics are private demo data.
+VNM-US-RECIPROCAL-TARIFF-2025,IR9492,Vietnam,North America,HTS_DEMO_IR9492,True,25,0.2,5,3000,15000,SIMULATED_PRIVATE,Policy/rate public; product HTS/exception flag and customs-value economics are private demo data.

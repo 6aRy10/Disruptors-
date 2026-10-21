@@ -16,9 +16,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs / builds
 *.log
-
-# Local generated files
 dist/
 build/

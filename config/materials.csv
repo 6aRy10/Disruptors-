@@ -1,0 +1,21 @@
+material_id,name,uom,category,criticality,public_basis,provenance_class
+MAT-TEXTILE-UPPER,Performance textile upper kit,kit,Footwear,critical,Public product pages describe textile/mesh uppers for performance footwear.,PUBLIC_DERIVED
+MAT-LIGHTSTRIKE-MIDSOLE,Lightstrike / Lightstrike Pro midsole pair,pair,Footwear,critical,Adizero SL2 product page.,PUBLIC_DERIVED
+MAT-BOOST-MIDSOLE,Light BOOST V2 midsole pair,pair,Footwear,critical,Ultraboost 5 product page.,PUBLIC_DERIVED
+MAT-RUBBER-OUTSOLE,Rubber outsole pair,pair,Footwear,critical,Public footwear product pages.,PUBLIC_DERIVED
+MAT-CONTINENTAL-OUTSOLE,Continental rubber outsole pair,pair,Footwear,critical,Ultraboost 5 product page.,PUBLIC_DERIVED
+MAT-LEATHER-UPPER,Leather upper panel set,set,Footwear,critical,Samba OG product page.,PUBLIC_DERIVED
+MAT-TEXTILE-LINING,Textile lining kit,kit,Footwear,medium,Public footwear product pages.,PUBLIC_DERIVED
+MAT-LACES,Lace pair,pair,Footwear,medium,Public footwear product pages.,PUBLIC_DERIVED
+MAT-THREAD,Industrial sewing thread,meter,Cross-category,medium,Real Adidas T2 thread suppliers are disclosed; exact SKU use is private.,SIMULATED_PRIVATE
+MAT-ADHESIVE,Footwear assembly adhesive allocation,unit,Footwear,critical,Manufacturing digital-twin input; exact chemistry and supplier are private.,SIMULATED_PRIVATE
+MAT-TORSION,Torsion System component,unit,Footwear,medium,Ultraboost 5 product page.,PUBLIC_DERIVED
+MAT-POLY-FABRIC,Recycled polyester apparel fabric,meter,Apparel,critical,Tiro 24 Training Jacket is 100% recycled polyester.,PUBLIC_DERIVED
+MAT-FLEECE-COTTON,Cotton fleece fabric,meter,Apparel,critical,Trefoil Essentials Hoodie public material composition.,PUBLIC_DERIVED
+MAT-FLEECE-RPOLY,Recycled polyester fleece component,meter,Apparel,medium,Trefoil Essentials Hoodie public material composition.,PUBLIC_DERIVED
+MAT-ZIPPER,Garment/bag zipper set,set,Apparel/Accessories,medium,Real YKK T2 facility disclosed; exact SKU use private.,SIMULATED_PRIVATE
+MAT-RIB,Rib trim set,set,Apparel,medium,Public apparel product details.,PUBLIC_DERIVED
+MAT-DRAWCORD,Drawcord set,set,Apparel,low,Trefoil Essentials Hoodie public details.,PUBLIC_DERIVED
+MAT-POLY-BAG,Polyester backpack shell fabric,meter,Accessories,critical,Originals Daily Backpack is 100% polyester.,PUBLIC_DERIVED
+MAT-WEBBING,Strap and webbing set,set,Accessories,medium,Backpack construction digital twin; exact BOM private.,SIMULATED_PRIVATE
+MAT-PACKAGING,Labels and packaging set,set,Cross-category,low,Standard finished-product logistics input; exact SKU quantity private.,SIMULATED_PRIVATE

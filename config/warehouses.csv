@@ -1,0 +1,4 @@
+warehouse_id,name,region,provenance_class
+WH-EU,Europe DC,Europe,SIMULATED_PRIVATE
+WH-NA,North America DC,North America,SIMULATED_PRIVATE
+WH-GC,Greater China DC,Greater China,SIMULATED_PRIVATE

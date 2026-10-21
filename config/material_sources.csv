@@ -1,0 +1,7 @@
+material_id,facility_id,role,approved,lead_time_days,weekly_capacity_units,provenance_class,note
+MAT-RUBBER-OUTSOLE,ADI26-0758,primary,True,7,50000,SIMULATED_PRIVATE,Real disclosed Indonesian T2 footwear facility 26 km from Cianjur replay. Exact material allocation is private demo data.
+MAT-THREAD,ADI26-0751,primary,True,7,50000,SIMULATED_PRIVATE,Real disclosed Indonesian T2 footwear facility near Cianjur replay. Exact material allocation is private demo data.
+MAT-TEXTILE-UPPER,ADI26-0754,primary,True,7,50000,SIMULATED_PRIVATE,Real disclosed Indonesian T2 footwear facility in West Java. Exact material allocation is private demo data.
+MAT-LEATHER-UPPER,ADI26-0731,alternate,True,10,50000,SIMULATED_PRIVATE,Real disclosed China T2 leather facility near Yantian. Exact material allocation is private demo data.
+MAT-ZIPPER,ADI26-0741,primary,True,7,50000,SIMULATED_PRIVATE,Real disclosed Shenzhen T2 zipper facility near Yantian. Exact product allocation is private demo data.
+MAT-THREAD,ADI26-0708,alternate,True,10,50000,SIMULATED_PRIVATE,Real disclosed Shenzhen-area supplier used as a demo alternate. Exact material allocation is private data.

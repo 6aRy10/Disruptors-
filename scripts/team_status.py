@@ -22,6 +22,8 @@ def status_report() -> dict:
                 "open_incidents": ("incidents", "SELECT COUNT(*) FROM incidents WHERE status IN ('OPEN','INVESTIGATING')"),
                 "open_evidence_tasks": ("incident_investigation_tasks", "SELECT COUNT(*) FROM incident_investigation_tasks WHERE status='OPEN'"),
                 "supplier_confirmation_requests": ("supplier_confirmation_requests", "SELECT COUNT(*) FROM supplier_confirmation_requests"),
+                "confirmed_facility_capacity_windows": ("confirmed_facility_capacity", "SELECT COUNT(*) FROM confirmed_facility_capacity"),
+                "investigation_outreach_drafts": ("investigation_outreach_drafts", "SELECT COUNT(*) FROM investigation_outreach_drafts"),
             }
             missing = [
                 name for name, (table, _) in expected.items()
@@ -45,7 +47,22 @@ def status_report() -> dict:
                     result["runtime"]["failed_incident_consumptions"] = int(conn.execute(
                         "SELECT COUNT(*) FROM event_consumptions WHERE status='ERROR' AND consumer_name='incident-orchestrator'"
                     ).fetchone()[0])
-            result["status"] = "READY" if not missing else "SCHEMA_INCOMPLETE"
+            if missing:
+                result["status"] = "SCHEMA_INCOMPLETE"
+            elif (
+                result["records"]["public_network_facilities"] < 770
+                or result["records"]["generated_private_products"] < 2500
+                or result["records"]["material_allocations"] < 170000
+            ):
+                result["status"] = "DATA_INCOMPLETE"
+                result["action"] = (
+                    "Verify the selected database; initialize ONLY a disposable "
+                    "development database. Do not reset existing private data."
+                )
+            else:
+                result["status"] = "READY"
+            result["runtime"]["live_polling_status"] = "NOT_VERIFIED_FROM_DATABASE"
+            result["runtime"]["aiven_kafka_status"] = "NOT_VERIFIED_FROM_DATABASE"
     except Exception as exc:
         # Do not leak host, usernames, passwords or full exception text.
         result["error_type"] = type(exc).__name__

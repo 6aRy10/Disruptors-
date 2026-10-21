@@ -82,8 +82,13 @@ def confirm_facility_capacity(
         )
         # All SKUs allocated to the same physical factory must replan.
         skus=conn.execute(
-            "SELECT DISTINCT sku FROM product_facilities WHERE facility_id=%s",
-            (facility_id,),
+            """
+            SELECT sku FROM product_facilities WHERE facility_id=%s
+            UNION
+            SELECT sku FROM material_allocations
+            WHERE source_facility_id=%s AND approved=true
+            """,
+            (facility_id,facility_id),
         ).fetchall()
         version=_bump_state(
             conn,change_type="FACILITY_WIDE_CAPACITY_CONFIRMED",

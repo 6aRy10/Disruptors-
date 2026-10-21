@@ -165,6 +165,8 @@ class DehardcodingTests(unittest.TestCase):
                 """
                 SELECT f.facility_id,ST_X(f.geom::geometry),ST_Y(f.geom::geometry)
                 FROM facilities f
+                JOIN facility_network_links l
+                  ON l.facility_id=f.facility_id
                 WHERE f.facility_id LIKE 'DTF-A-%'
                   AND EXISTS (
                     SELECT 1

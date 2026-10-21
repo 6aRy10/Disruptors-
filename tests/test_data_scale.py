@@ -17,6 +17,13 @@ class EnterpriseDataScaleTests(unittest.TestCase):
                 "facilities": conn.execute(
                     "SELECT COUNT(*) FROM facilities WHERE facility_id LIKE 'DTF-%'"
                 ).fetchone()[0],
+                "facility_links": conn.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM facility_network_links
+                    WHERE facility_id LIKE 'DTF-%'
+                    """
+                ).fetchone()[0],
                 "products": conn.execute(
                     "SELECT COUNT(*) FROM products WHERE sku LIKE 'DTSKU-%'"
                 ).fetchone()[0],
@@ -47,6 +54,7 @@ class EnterpriseDataScaleTests(unittest.TestCase):
             }
 
         self.assertGreaterEqual(counts["facilities"], 200)
+        self.assertEqual(counts["facility_links"], counts["facilities"])
         self.assertEqual(counts["products"], 450)
         self.assertGreaterEqual(counts["materials"], 350)
         self.assertGreaterEqual(counts["bom"], 5000)

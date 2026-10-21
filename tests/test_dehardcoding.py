@@ -4,6 +4,7 @@ from pathlib import Path
 from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
 from dependency.graph.event_impact import trace_business_event_impact
+from dependency.graph.exposure import facilities_within_radius
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
 
@@ -158,8 +159,7 @@ class DehardcodingTests(unittest.TestCase):
         self.assertEqual(result["scenario_id"], self.SCENARIO_ID)
         self.assertTrue(result["recovery_ready"])
 
-    def test_arbitrary_new_earthquake_reaches_generated_private_graph(self):
-        event_id = "TEST-ARBITRARY-SCALE-EARTHQUAKE"
+    def _insert_scale_earthquake(self, event_id: str):
         with connect() as conn:
             row = conn.execute(
                 """
@@ -178,6 +178,19 @@ class DehardcodingTests(unittest.TestCase):
             ).fetchone()
             self.assertIsNotNone(row)
             facility_id, lon, lat = row
+            expected = {
+                r[0]
+                for r in conn.execute(
+                    """
+                    SELECT sku
+                    FROM product_facilities
+                    WHERE facility_id=%s
+                      AND sku LIKE 'DTSKU-%'
+                    ORDER BY sku
+                    """,
+                    (facility_id,),
+                ).fetchall()
+            }
             conn.execute(
                 """
                 INSERT INTO external_events(
@@ -194,38 +207,93 @@ class DehardcodingTests(unittest.TestCase):
                 """,
                 (event_id, lon, lat),
             )
-            expected = {
-                r[0]
-                for r in conn.execute(
-                    """
-                    SELECT sku
-                    FROM product_facilities
-                    WHERE facility_id=%s
-                      AND sku LIKE 'DTSKU-%'
-                    """,
-                    (facility_id,),
-                ).fetchall()
-            }
+            conn.commit()
+        return {
+            "facility_id": facility_id,
+            "longitude": float(lon),
+            "latitude": float(lat),
+            "expected_skus": expected,
+        }
+
+    def _delete_test_event(self, event_id: str):
+        with connect() as conn:
+            conn.execute(
+                "DELETE FROM external_events WHERE event_id=%s",
+                (event_id,),
+            )
             conn.commit()
 
+    def test_generated_facility_has_products_and_coordinates(self):
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                  f.facility_id,
+                  ST_X(f.geom::geometry),
+                  ST_Y(f.geom::geometry),
+                  COUNT(pf.sku)
+                FROM facilities f
+                JOIN product_facilities pf ON pf.facility_id=f.facility_id
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND pf.sku LIKE 'DTSKU-%'
+                GROUP BY f.facility_id,f.geom
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+
+        self.assertIsNotNone(row)
+        self.assertIsNotNone(row[1])
+        self.assertIsNotNone(row[2])
+        self.assertGreater(int(row[3]), 0)
+
+    def test_arbitrary_new_event_finds_generated_facility_geospatially(self):
+        event_id = "TEST-ARBITRARY-SCALE-GEO"
+        fixture = self._insert_scale_earthquake(event_id)
+        try:
+            rows = facilities_within_radius(
+                latitude=fixture["latitude"],
+                longitude=fixture["longitude"],
+                radius_km=3,
+            )
+            ids = {
+                operational_id
+                for row in rows
+                for operational_id in row.get(
+                    "operational_facility_ids",
+                    [],
+                )
+            }
+            self.assertIn(fixture["facility_id"], ids)
+        finally:
+            self._delete_test_event(event_id)
+
+    def test_arbitrary_new_earthquake_reaches_generated_private_graph(self):
+        event_id = "TEST-ARBITRARY-SCALE-EARTHQUAKE"
+        fixture = self._insert_scale_earthquake(event_id)
         try:
             impact = trace_business_event_impact(
                 event_id=event_id,
                 radius_km=3,
             )
             impacted = {row["sku"] for row in impact["products"]}
-            self.assertTrue(expected)
-            self.assertTrue(expected & impacted)
+            self.assertTrue(fixture["expected_skus"])
             self.assertTrue(
-                all(sku.startswith("DTSKU-") for sku in expected & impacted)
+                fixture["expected_skus"] & impacted,
+                (
+                    f"Expected at least one of {sorted(fixture['expected_skus'])} "
+                    f"from facility {fixture['facility_id']}; got "
+                    f"{sorted(impacted)}"
+                ),
+            )
+            self.assertTrue(
+                all(
+                    sku.startswith("DTSKU-")
+                    for sku in fixture["expected_skus"] & impacted
+                )
             )
         finally:
-            with connect() as conn:
-                conn.execute(
-                    "DELETE FROM external_events WHERE event_id=%s",
-                    (event_id,),
-                )
-                conn.commit()
+            self._delete_test_event(event_id)
 
     def test_arbitrary_ocean_event_does_not_create_fake_business_impact(self):
         event_id = "TEST-ARBITRARY-OCEAN-EARTHQUAKE"

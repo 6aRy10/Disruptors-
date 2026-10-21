@@ -113,6 +113,12 @@ jobs:
       - name: Test judge-editable operational state
         run: python -m unittest tests.test_judge_edits -v
 
+      - name: Generalization - generated facility fixture
+        run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_generated_facility_has_products_and_coordinates -v
+
+      - name: Generalization - generated facility geospatial lookup
+        run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_arbitrary_new_event_finds_generated_facility_geospatially -v
+
       - name: Generalization - arbitrary new event
         run: python -m unittest tests.test_dehardcoding.DehardcodingTests.test_arbitrary_new_earthquake_reaches_generated_private_graph -v
 

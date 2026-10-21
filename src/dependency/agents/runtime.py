@@ -77,17 +77,29 @@ def run_agent(
             name = _item_value(call, "name")
             call_id = _item_value(call, "call_id")
             raw_arguments = _item_value(call, "arguments", "{}")
-            arguments = (
-                json.loads(raw_arguments)
-                if isinstance(raw_arguments, str)
-                else dict(raw_arguments or {})
-            )
+            try:
+                arguments = (
+                    json.loads(raw_arguments)
+                    if isinstance(raw_arguments, str)
+                    else dict(raw_arguments or {})
+                )
+                if not isinstance(arguments, dict):
+                    raise ValueError("Tool arguments must be a JSON object.")
+                argument_error = None
+            except (ValueError, TypeError, AttributeError) as exc:
+                arguments = {}
+                argument_error = {
+                    "error": "INVALID_TOOL_ARGUMENTS",
+                    "message": str(exc),
+                }
 
             if name not in spec.tool_names:
                 result = {
                     "error": "TOOL_NOT_ALLOWED_FOR_AGENT",
                     "tool": name,
                 }
+            elif argument_error is not None:
+                result = argument_error
             else:
                 try:
                     result = dispatch_tool(name, arguments)

@@ -438,6 +438,26 @@ function renderActions() {
 
 function renderOperations() {
   const ops = state.snapshot?.operations || {};
+  const investigationRows = (ops.investigation_tasks || []).filter(
+    row => !state.selectedEventId ||
+      (ops.open_incidents || []).some(
+        incident => incident.incident_id === row.incident_id &&
+                    incident.event_id === state.selectedEventId
+      )
+  );
+  $("investigationTasks").innerHTML = investigationRows.map(row => `
+    <div class="compact-row">
+      <div>
+        <strong>${esc(row.task_type.replaceAll("_", " "))} · ${esc(row.target_id)}</strong>
+        <span>${esc(row.required_fact)}</span>
+        <span>Linked SKUs: ${esc((row.connected_skus || []).slice(0, 5).join(", ") || "unverified")}
+          · Connected margin: ${money(row.connected_margin_eur)}
+          · ${esc(row.provenance_class)}
+        </span>
+      </div>
+      <span class="badge warning">EVIDENCE MISSING</span>
+    </div>
+  `).join("") || '<div class="muted">No open investigation tasks for the selected event.</div>';
   $("supplierRequests").innerHTML = (ops.supplier_requests || []).map(row => `
     <div class="compact-row">
       <div>

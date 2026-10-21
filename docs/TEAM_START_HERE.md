@@ -158,3 +158,14 @@ This is read-only. It shows the provider and provenance, queue consumption,
 incident (if one exists), explicit dependency paths, and connected commercial
 value. A missing product path is a valid outcome, not permission to invent a
 factory-to-SKU assignment. Never equate proximity with verified factory damage.
+
+## Live evidence queue (non-destructive migration)
+
+The investigation queue is a new table. On an already loaded local development
+database, run `python -m scripts.apply_migrations` after pulling this branch.
+Do **not** reset your 266k-row private twin. Live events now create durable,
+deduplicated tasks for missing facility, material, shipment and policy evidence.
+Inspect them at `GET /investigations/tasks` or under "Missing evidence and next
+actions" on `/dashboard`. These are investigation tasks, **not** outbound
+supplier messages or confirmed shutdowns. A separate authorized workflow must
+confirm new operational state.

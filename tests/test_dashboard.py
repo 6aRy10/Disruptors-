@@ -59,6 +59,7 @@ class DashboardSnapshotTests(unittest.TestCase):
         )
         self.assertIsNotNone(first["selected"]["impact"])
         self.assertIsNotNone(first["selected"]["portfolio"])
+        self.assertIn("investigation_tasks", first["operations"])
         self.assertIn("VERIFIED_PUBLIC", first["truth_model"])
         self.assertIn("SIMULATED_PRIVATE", first["truth_model"])
         self.assertGreaterEqual(len(first["claim_rules"]), 4)

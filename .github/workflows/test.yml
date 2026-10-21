@@ -65,8 +65,26 @@ jobs:
       - name: Test agent contracts
         run: python -m unittest tests.test_agents -v
 
-      - name: Test agent data tools
-        run: python -m unittest tests.test_agent_tools_data -v
+      - name: Agent tool - BOM explosion
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_bom_explosion_is_deterministic -v
+
+      - name: Agent tool - inventory
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_inventory_reports_usable_stock_without_safety_stock -v
+
+      - name: Agent tool - upstream trace
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_upstream_trace_uses_explicit_allocations -v
+
+      - name: Agent tool - company normalization
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_company_normalization_resolves_public_network_candidate -v
+
+      - name: Agent tool - transport options
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_transport_options_are_data_driven -v
+
+      - name: Agent tool - approved alternatives
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_approved_alternatives_do_not_promote_unapproved_substitute -v
+
+      - name: Agent tool - event evidence
+        run: python -m unittest tests.test_agent_tools_data.AgentDataToolTests.test_event_evidence_keeps_proximity_as_potential_only -v
 
       - name: Test operational memory
         run: python -m unittest tests.test_memory -v

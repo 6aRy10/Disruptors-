@@ -91,6 +91,7 @@ def main() -> None:
     parser.add_argument("--safety-stock-site", default="WH-EU")
     parser.add_argument("--safety-stock-units", type=float, default=500.0)
     parser.add_argument("--stop-after-stage", type=int, choices=range(0, 9), default=8)
+    parser.add_argument("--skip-event-worker", action="store_true")
     args = parser.parse_args()
 
     heading(0, "RESET")
@@ -213,7 +214,10 @@ def main() -> None:
     print("\nConfirmed private operational evidence:")
     print(json.dumps(confirmed, indent=2, default=str))
 
-    process_pending_events(limit=500)
+    if not args.skip_event_worker:
+        worker_result = process_pending_events(limit=500)
+        if worker_result.get("failed"):
+            raise RuntimeError(f"Incident orchestration failures: {worker_result['failed']}")
 
     if args.stop_after_stage == 4:
         return

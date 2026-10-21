@@ -129,3 +129,11 @@ not marked executable. Do not claim otherwise in the pitch.
 
 After `git pull --ff-only`, run `python -m scripts.apply_migrations`
 (non-destructive) to create the new confirmed capacity table.
+
+## Prevent accidental Aiven database switching
+
+The PostgreSQL connection now refuses to silently switch when both
+`DATABASE_URL` and `AIVEN_DATABASE_URL` exist. Keep
+`DEPENDENCY_DATABASE_TARGET=local` until the managed PostGIS database is
+populated and passes preflight. Use `DEPENDENCY_DATABASE_TARGET=aiven`
+**only** after verification. The database preflight never changes the target.

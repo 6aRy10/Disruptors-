@@ -9,10 +9,33 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def database_target() -> str:
+    """Explicitly select the operational database; never silently switch twins."""
+    local = bool(os.getenv("DATABASE_URL"))
+    aiven = bool(os.getenv("AIVEN_DATABASE_URL"))
+    requested = os.getenv("DEPENDENCY_DATABASE_TARGET", "").strip().lower()
+    if requested and requested not in {"local", "aiven"}:
+        raise ValueError("DEPENDENCY_DATABASE_TARGET must be local or aiven.")
+    if requested:
+        return requested
+    if local and aiven:
+        raise RuntimeError(
+            "Both database URLs are set. Set DEPENDENCY_DATABASE_TARGET=local "
+            "or DEPENDENCY_DATABASE_TARGET=aiven explicitly."
+        )
+    if local:
+        return "local"
+    if aiven:
+        return "aiven"
+    raise RuntimeError("Set DATABASE_URL for local PostgreSQL or AIVEN_DATABASE_URL for Aiven.")
+
+
 def database_url() -> str:
-    url = os.getenv("AIVEN_DATABASE_URL") or os.getenv("DATABASE_URL")
+    target = database_target()
+    key = "AIVEN_DATABASE_URL" if target == "aiven" else "DATABASE_URL"
+    url = os.getenv(key)
     if not url:
-        raise RuntimeError("Set DATABASE_URL (local) or AIVEN_DATABASE_URL (Aiven deployment).")
+        raise RuntimeError(f"Selected {target} database has no configured URL.")
     return url
 
 

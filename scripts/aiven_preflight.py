@@ -94,7 +94,8 @@ def report() -> dict:
         "aiven_postgresql": pg,
         "aiven_kafka": kafka,
         "application_database_selection": (
-            "AIVEN_DATABASE_URL takes precedence if set; otherwise DATABASE_URL."
+            "DEPENDENCY_DATABASE_TARGET explicitly selects local or aiven. "
+            "When both URLs exist and no target is selected, application connections fail closed."
         ),
         "migration_performed": False,
         "secrets_printed": False,

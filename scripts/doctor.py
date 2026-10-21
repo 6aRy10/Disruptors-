@@ -5,7 +5,7 @@ import json
 import os
 from urllib.parse import urlsplit
 
-from dependency.db.connection import connect, database_url
+from dependency.db.connection import connect, database_url, database_target
 
 
 def report() -> dict:
@@ -15,7 +15,7 @@ def report() -> dict:
         result["database"] = {
             "host": u.hostname, "port": u.port or 5432,
             "name": (u.path or "").lstrip("/"),
-            "source": "AIVEN_DATABASE_URL" if os.getenv("AIVEN_DATABASE_URL") else "DATABASE_URL",
+            "source": "AIVEN_DATABASE_URL" if database_target() == "aiven" else "DATABASE_URL",
             "both_urls_set": bool(os.getenv("AIVEN_DATABASE_URL") and os.getenv("DATABASE_URL")),
         }
         with connect() as conn:

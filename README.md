@@ -84,18 +84,18 @@ data from silently changing the Cianjur ground truth.
 
 Current generated scale:
 
-- 450 additional private SKUs.
-- 396 realistic material/component records.
-- 5,100 BOM rows.
-- 1,350 SKU-to-assembly edges.
-- 792 material-source edges.
-- 30,600 exact material-source allocation edges.
-- 3,600 customer commitments.
-- 2,250 purchase orders.
-- 900 production orders.
-- 1,350 supplier-capacity rows.
+- 2,500 additional private SKUs.
+- 792 realistic material/component records.
+- 28,335 BOM rows.
+- 7,500 SKU-to-assembly edges.
+- 1,584 material-source edges.
+- 170,010 exact material-source allocation edges.
+- 20,000 customer commitments.
+- 12,500 purchase orders.
+- 5,000 production orders.
+- 7,500 supplier-capacity rows.
 - 900 transport lanes.
-- more than 50,000 generated private-twin rows in total.
+- more than 266,000 generated private-twin rows in total.
 
 The generated CSV files are written to:
 

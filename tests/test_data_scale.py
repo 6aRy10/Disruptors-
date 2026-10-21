@@ -53,17 +53,17 @@ class EnterpriseDataScaleTests(unittest.TestCase):
                 ).fetchone()[0],
             }
 
-        self.assertGreaterEqual(counts["facilities"], 200)
+        self.assertEqual(counts["facilities"], 240)
         self.assertEqual(counts["facility_links"], counts["facilities"])
-        self.assertEqual(counts["products"], 450)
-        self.assertGreaterEqual(counts["materials"], 350)
-        self.assertGreaterEqual(counts["bom"], 5000)
-        self.assertEqual(counts["product_facilities"], 1350)
-        self.assertGreaterEqual(counts["material_allocations"], 30000)
-        self.assertEqual(counts["commitments"], 3600)
-        self.assertEqual(counts["purchase_orders"], 2250)
-        self.assertEqual(counts["production_orders"], 900)
-        self.assertGreaterEqual(counts["transport_lanes"], 500)
+        self.assertEqual(counts["products"], 2500)
+        self.assertEqual(counts["materials"], 792)
+        self.assertEqual(counts["bom"], 28335)
+        self.assertEqual(counts["product_facilities"], 7500)
+        self.assertEqual(counts["material_allocations"], 170010)
+        self.assertEqual(counts["commitments"], 20000)
+        self.assertEqual(counts["purchase_orders"], 12500)
+        self.assertEqual(counts["production_orders"], 5000)
+        self.assertEqual(counts["transport_lanes"], 900)
 
     def test_generated_csv_manifest_matches_database_scale(self):
         manifest_path = GENERATED / "manifest.json"
@@ -72,13 +72,13 @@ class EnterpriseDataScaleTests(unittest.TestCase):
 
         self.assertEqual(manifest["private_data_provenance"], "SIMULATED_PRIVATE")
         self.assertEqual(manifest["public_identity_provenance"], "VERIFIED_PUBLIC")
-        self.assertEqual(manifest["counts"]["products"], 450)
-        self.assertGreaterEqual(manifest["counts"]["bom"], 5000)
-        self.assertGreaterEqual(
+        self.assertEqual(manifest["counts"]["products"], 2500)
+        self.assertEqual(manifest["counts"]["bom"], 28335)
+        self.assertEqual(
             manifest["counts"]["material_allocations"],
-            30000,
+            170010,
         )
-        self.assertGreaterEqual(manifest["total_generated_rows"], 45000)
+        self.assertGreaterEqual(manifest["total_generated_rows"], 266000)
 
         for dataset in (
             "products",

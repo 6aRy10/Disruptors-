@@ -9,6 +9,7 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
+from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
@@ -121,6 +122,14 @@ def scenario_recovery(
             sku=sku,
             release_safety_stock=release_safety_stock,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/scenarios/{scenario_id}/risk/{sku}")
+def scenario_risk(scenario_id: str, sku: str):
+    try:
+        return scenario_product_risk(scenario_id=scenario_id, sku=sku)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

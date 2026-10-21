@@ -87,12 +87,38 @@ def check_kafka() -> dict:
             "note": "Kafka TLS reachability, topics and publish/consume are not yet verified."}
 
 
-def report() -> dict:
+def probe_kafka_network() -> dict:
+    """Read-only Kafka metadata query: no topics created and no event published."""
+    from dependency.events.bus import _kafka_config
+    from dependency.events.consumer import kafka_subscription_topics
+    configured=check_kafka()
+    if configured["status"]!="CONFIGURED_NOT_CONNECTED":
+        return {"status":"NOT_READY","configuration":configured["status"]}
+    try:
+        from confluent_kafka.admin import AdminClient
+        topics=kafka_subscription_topics()
+        metadata=AdminClient(_kafka_config()).list_topics(timeout=8.0)
+        missing=sorted(set(topics)-set(metadata.topics))
+        denied=sorted(t for t in topics if t in metadata.topics
+                      and metadata.topics[t].error is not None)
+        return {"status":"MISSING_TOPICS" if missing else
+                 "TOPIC_ACCESS_ERROR" if denied else "READY_TO_STREAM",
+                "expected_topics":list(topics),"missing_topics":missing,
+                "topic_errors":denied,"broker_count":len(metadata.brokers),
+                "changed_remote_state":False}
+    except Exception as exc:
+        # librdkafka error messages can disclose private connection endpoints.
+        return {"status":"CONNECTION_FAILED","error_type":type(exc).__name__,
+                "changed_remote_state":False}
+
+
+def report(*, probe_kafka: bool = False) -> dict:
     pg = check_postgresql()
     kafka = check_kafka()
     return {
         "aiven_postgresql": pg,
         "aiven_kafka": kafka,
+        "kafka_network": probe_kafka_network() if probe_kafka else {"status":"NOT_PROBED"},
         "application_database_selection": (
             "DEPENDENCY_DATABASE_TARGET explicitly selects local or aiven. "
             "When both URLs exist and no target is selected, application connections fail closed."
@@ -103,4 +129,9 @@ def report() -> dict:
 
 
 if __name__ == "__main__":
-    print(json.dumps(report(), indent=2))
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--probe-kafka",action="store_true",
+                        help="Check broker and topic TLS reachability without publishing.")
+    args=parser.parse_args()
+    print(json.dumps(report(probe_kafka=args.probe_kafka), indent=2))

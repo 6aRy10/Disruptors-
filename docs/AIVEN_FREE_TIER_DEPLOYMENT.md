@@ -117,3 +117,17 @@ Only paid Kafka clusters with enough topic quota should use optional
 `AIVEN_KAFKA_ROUTING_MODE=logical` compatibility mode.
 
 https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier
+
+## Read-only live Kafka readiness check
+
+After configuring TLS privately and creating the `dependency.events` topic
+in the Aiven Console, run:
+
+```powershell
+python -m scripts.aiven_preflight --probe-kafka
+```
+
+Only `READY_TO_STREAM` confirms broker reachability and topic metadata
+access. Other results are `NOT_READY`, `MISSING_TOPICS`,
+`TOPIC_ACCESS_ERROR` or `CONNECTION_FAILED`. The probe cannot create topics
+or publish events; it never changes the current local PostgreSQL target.

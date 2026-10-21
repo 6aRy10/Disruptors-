@@ -41,6 +41,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
+      - name: Test read-only Aiven broker and topic readiness
+        run: python -m unittest tests.test_aiven_network_probe -v
+
       - name: Test Aiven free-tier safety preflight
         run: python -m unittest tests.test_aiven_preflight -v
 

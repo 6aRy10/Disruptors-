@@ -50,45 +50,6 @@ def _public_exposure(event_id: str | None, radius_km: float) -> list[dict]:
     )
 
 
-def _private_twin_stats() -> dict:
-    queries = {
-        "operational_facilities": "SELECT COUNT(*) FROM facilities",
-        "products": "SELECT COUNT(*) FROM products",
-        "materials": "SELECT COUNT(*) FROM materials",
-        "bom_lines": "SELECT COUNT(*) FROM bom",
-        "product_facility_edges": "SELECT COUNT(*) FROM product_facilities",
-        "material_source_edges": "SELECT COUNT(*) FROM material_sources",
-        "material_allocation_edges": "SELECT COUNT(*) FROM material_allocations",
-        "inventory_rows": "SELECT COUNT(*) FROM inventory",
-        "supplier_capacity_rows": "SELECT COUNT(*) FROM supplier_capacity",
-        "production_orders": "SELECT COUNT(*) FROM production_orders",
-        "customer_commitments": "SELECT COUNT(*) FROM fulfilment_commitments",
-        "purchase_orders": "SELECT COUNT(*) FROM purchase_orders",
-        "transport_lanes": "SELECT COUNT(*) FROM transport_lanes",
-        "substitutions": "SELECT COUNT(*) FROM substitutions",
-    }
-    with connect() as conn:
-        stats = {
-            key: int(conn.execute(sql).fetchone()[0])
-            for key, sql in queries.items()
-        }
-    stats["decision_graph_rows"] = sum(
-        stats[key]
-        for key in (
-            "bom_lines",
-            "product_facility_edges",
-            "material_source_edges",
-            "material_allocation_edges",
-            "production_orders",
-            "customer_commitments",
-            "purchase_orders",
-            "transport_lanes",
-            "substitutions",
-        )
-    )
-    return stats
-
-
 def _state_version() -> int:
     with connect() as conn:
         row = conn.execute(
@@ -308,6 +269,20 @@ def dashboard_snapshot(
     executions = list_action_executions(limit=25)
 
     scale = enterprise_data_stats()
+    scale_counts = scale["counts"]
+    dashboard_scale = {
+        **scale_counts,
+        "bom_lines": scale_counts["bom_rows"],
+        "material_allocation_edges": scale_counts["material_allocations"],
+        "operational_record_count": scale["operational_record_count"],
+        "simulated_private_core_record_count": (
+            scale["simulated_private_core_record_count"]
+        ),
+        "public_to_private_facility_links": (
+            scale["public_to_private_facility_links"]
+        ),
+        "truth_rule": scale["truth_rule"],
+    }
 
     metrics = {
         "operational_records": scale["operational_record_count"],
@@ -338,8 +313,7 @@ def dashboard_snapshot(
 
     return {
         "metrics": metrics,
-        "data_scale": _private_twin_stats(),
-        "data_scale": scale,
+        "data_scale": dashboard_scale,
         "network": {
             "stats": network_stats(),
             "facilities": list_network_facilities(

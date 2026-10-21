@@ -124,3 +124,6 @@ jobs:
 
       - name: Test PortWatch normalization
         run: python -m unittest tests.test_portwatch -v
+
+      - name: Test transport feasibility
+        run: python -m unittest tests.test_transport_feasibility -v

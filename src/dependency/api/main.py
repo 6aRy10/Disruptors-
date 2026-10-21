@@ -40,6 +40,7 @@ from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.component_feasibility import evaluate_component_feasibility
+from dependency.solver.transport_feasibility import evaluate_recovery_transport
 from dependency.solver.portfolio import plan_event_recovery
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.solver.tariff import tariff_impact
@@ -329,6 +330,22 @@ def scenario_component_feasibility(
             destination_facility_id=destination_facility_id,
             production_units=production_units,
             need_by=need_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/scenarios/{scenario_id}/transport/{sku}")
+def scenario_transport_feasibility(
+    scenario_id: str,
+    sku: str,
+    origin_facility_id: str,
+):
+    try:
+        return evaluate_recovery_transport(
+            scenario_id=scenario_id,
+            sku=sku,
+            origin_facility_id=origin_facility_id,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

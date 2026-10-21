@@ -21,6 +21,7 @@ from dependency.services.supplier_outreach import (
 )
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.component_feasibility import evaluate_component_feasibility
+from dependency.solver.transport_feasibility import evaluate_recovery_transport
 from dependency.solver.material_timing import purchase_order_supply_by_date
 from dependency.solver.portfolio import plan_event_recovery
 from dependency.solver.recovery import plan_sku_recovery
@@ -613,6 +614,7 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "check_backup_independence": lambda: backup_independence(**args),
         "generate_recovery_candidates": lambda: generate_recovery_candidates(**args),
         "check_component_feasibility": lambda: evaluate_component_feasibility(**args),
+        "check_recovery_transport": lambda: evaluate_recovery_transport(**args),
         "get_recovery_plan": lambda: plan_sku_recovery(**args),
         "get_product_risk": lambda: scenario_product_risk(**args),
         "get_event_portfolio": lambda: plan_event_recovery(**args),
@@ -920,6 +922,22 @@ TOOL_SCHEMAS = [
             "required": ["sku", "primary_facility_id", "backup_facility_id"],
             "additionalProperties": False,
         },
+    },
+    {
+        "type": "function",
+        "name": "check_recovery_transport",
+        "description": "Check whether an approved production site has explicit open transport lanes that can reach each customer commitment after setup and before due date.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scenario_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "origin_facility_id": {"type": "string"}
+            },
+            "required": ["scenario_id", "sku", "origin_facility_id"],
+            "additionalProperties": False
+        }
     },
     {
         "type": "function",

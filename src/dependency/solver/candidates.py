@@ -15,6 +15,7 @@ HARD_REJECTION_REASONS = {
     "SHARED_UPSTREAM_DEPENDENCY",
     "CRITICAL_MATERIAL_SOURCE_UNAVAILABLE",
     "CRITICAL_COMPONENT_SHORTAGE",
+    "NO_ON_TIME_TRANSPORT_ROUTE",
 }
 
 
@@ -162,8 +163,12 @@ def _backup_candidate(
         reasons.append("BACKUP_FACILITY_UNAVAILABLE")
     if not backup["due_feasible"]:
         reasons.append("BACKUP_NOT_READY_BY_DUE_DATE")
-    if backup["capacity_status"] != "available" or backup["available_capacity_units"] <= 0:
+    if backup["capacity_status"] != "available" or backup["raw_available_capacity_units"] <= 0:
         reasons.append("BACKUP_CAPACITY_NOT_AVAILABLE")
+    if backup.get("transport_decision") == "NO_ON_TIME_TRANSPORT":
+        reasons.append("NO_ON_TIME_TRANSPORT_ROUTE")
+    elif backup.get("transport_decision") == "PARTIAL_TRANSPORT_COVERAGE":
+        reasons.append("PARTIAL_TRANSPORT_COVERAGE")
     if backup.get("material_path_blocked"):
         reasons.append("CRITICAL_MATERIAL_SOURCE_UNAVAILABLE")
     if backup.get("requires_material_confirmation"):
@@ -262,6 +267,7 @@ def _backup_candidate(
             "shared_dependency_count": len(shared_dependencies),
             "shared_dependencies": shared_dependencies,
             "material_path": backup.get("material_path"),
+            "transport_feasibility": backup.get("transport_feasibility"),
             "component_feasibility": component_feasibility,
             "provenance_class": backup["provenance_class"],
         },

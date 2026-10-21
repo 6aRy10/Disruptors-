@@ -63,6 +63,7 @@ IMPACT_INVESTIGATOR = AgentSpec(
         "explode_bom",
         "get_inventory",
         "check_component_feasibility",
+        "check_recovery_transport",
         "get_customer_commitments",
         "check_backup_independence",
         "get_open_purchase_orders",
@@ -91,6 +92,7 @@ RECOVERY_PLANNER = AgentSpec(
         "generate_recovery_candidates",
         "get_recovery_plan",
         "check_component_feasibility",
+        "check_recovery_transport",
         "get_supplier_capacity",
         "get_product_risk",
         "get_event_portfolio",
@@ -108,7 +110,7 @@ RECOVERY_PLANNER = AgentSpec(
 Your job:
 - Generate practical recovery actions across every operationally affected SKU.
 - Use the event portfolio tool before narrowing to a single product.
-- Use deterministic candidate, component-feasibility, and recovery tools before calling a plan feasible.
+- Use deterministic candidate, component-feasibility, transport-feasibility, and recovery tools before calling a plan feasible.
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.

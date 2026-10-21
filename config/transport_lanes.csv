@@ -4,3 +4,6 @@ LANE-VN-HPH-NA,ADI26-0683,VNHPH,Hai Phong,North America,ocean,27,2.9,open,VNM_US
 LANE-VN-SGN-NA,ADI26-0372,VNSGN,Ho Chi Minh City,North America,ocean,25,2.8,open,VNM_US_SECTION301_2026,SIMULATED_PRIVATE,Apparel U.S. demo route; tariff applicability still requires product classification and exemption check.
 LANE-CN-YTN-NA-1,ADI26-0083,CNYTN,Yantian,North America,ocean,22,2.6,disrupted_in_2021_replay,,SIMULATED_PRIVATE,Yantian disruption public; route assignment private demo data.
 LANE-CN-YTN-EU-1,ADI26-0085,CNYTN,Yantian,Europe,ocean,28,2.8,disrupted_in_2021_replay,,SIMULATED_PRIVATE,Yantian disruption public; route assignment private demo data.
+LANE-ID-HS-EU-AIR,ADI26-0240,,Emergency air recovery,Europe,air,4,12.0,open,,SIMULATED_PRIVATE,Emergency air route for the independent Indonesia backup. Route/cost are private digital-twin demo data.
+LANE-ID-HS-NA-AIR,ADI26-0240,,Emergency air recovery,North America,air,5,14.5,open,,SIMULATED_PRIVATE,Emergency air route for the independent Indonesia backup. Route/cost are private digital-twin demo data.
+LANE-ID-HS-GC-AIR,ADI26-0240,,Emergency air recovery,Greater China,air,3,8.0,open,,SIMULATED_PRIVATE,Emergency air route for the independent Indonesia backup. Route/cost are private digital-twin demo data.

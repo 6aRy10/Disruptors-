@@ -5,6 +5,7 @@ from datetime import timedelta
 from dependency.db.connection import connect
 from dependency.graph.material_paths import assess_material_paths
 from dependency.solver.allocation import Order, allocate_orders, summarize
+from dependency.solver.transport_feasibility import evaluate_recovery_transport
 
 
 def plan_sku_recovery(
@@ -190,6 +191,18 @@ def plan_sku_recovery(
                 sku=sku,
                 destination_facility_id=facility_id,
             )
+            transport = evaluate_recovery_transport(
+                scenario_id=scenario_id,
+                sku=sku,
+                origin_facility_id=facility_id,
+            )
+            transport_on_time_units = float(
+                transport["on_time_commitment_units"]
+            )
+            transport_limited_capacity = min(
+                available_capacity,
+                transport_on_time_units,
+            )
 
             candidates.append(
                 {
@@ -201,7 +214,14 @@ def plan_sku_recovery(
                     "earliest_due_date": earliest_due.isoformat(),
                     "capacity_units": float(row[4]),
                     "committed_units": float(row[5]),
-                    "available_capacity_units": available_capacity,
+                    "available_capacity_units": transport_limited_capacity,
+                    "raw_available_capacity_units": available_capacity,
+                    "transport_on_time_commitment_units": transport_on_time_units,
+                    "transport_uncovered_commitment_units": float(
+                        transport["uncovered_commitment_units"]
+                    ),
+                    "transport_decision": transport["decision"],
+                    "transport_feasibility": transport,
                     "evidence_age_hours": float(row[6] or 0),
                     "capacity_status": row[7],
                     "scenario_status": state["status"],
@@ -223,6 +243,7 @@ def plan_sku_recovery(
             if c["scenario_status"] != "UNAVAILABLE"
             and not c["material_path_blocked"]
             and c["due_feasible"]
+            and c["transport_on_time_commitment_units"] > 0
             and c["available_capacity_units"] > 0
             and c["capacity_status"] == "available"
         ]

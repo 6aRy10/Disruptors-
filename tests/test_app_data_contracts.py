@@ -65,11 +65,13 @@ class AppDataContracts(unittest.TestCase):
         now=datetime.now(UTC)
         conn.execute.return_value.fetchall.return_value=[
             ("INC-1","GDACS-1","INVESTIGATING",None,now,"Wildfire",
-             "wildfire","LIVE","GDACS",2),
+             "wildfire","LIVE","GDACS",2,1),
         ]
         connect.return_value.__enter__.return_value=conn
         inbox=incident_inbox()
         self.assertEqual(inbox["incidents"][0]["open_evidence_tasks"],2)
+        self.assertEqual(inbox["incidents"][0]["product_linked_evidence_tasks"],1)
+        self.assertIn("jsonb_array_length(t.connected_skus)>0", conn.execute.call_args.args[0])
         self.assertEqual(inbox["incidents"][0]["mode"],"LIVE")
         self.assertIn("not proof",inbox["truth_rule"])
 

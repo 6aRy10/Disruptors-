@@ -201,14 +201,22 @@ def incident_inbox(*, limit: int = 50) -> dict:
             """
             SELECT i.incident_id,i.event_id,i.status,i.scenario_id,
                    i.detected_at,e.title,e.event_type,e.mode,e.source,
-                   COUNT(t.task_id) FILTER (WHERE t.status='OPEN') AS open_tasks
+                   COUNT(t.task_id) FILTER (WHERE t.status='OPEN') AS open_tasks,
+                   COUNT(t.task_id) FILTER (
+                     WHERE t.status='OPEN'
+                       AND jsonb_array_length(t.connected_skus)>0
+                   ) AS product_linked_tasks
             FROM incidents i
             JOIN external_events e ON e.event_id=i.event_id
             LEFT JOIN incident_investigation_tasks t
               ON t.incident_id=i.incident_id
             WHERE i.status IN ('OPEN','INVESTIGATING')
             GROUP BY i.incident_id,e.event_id
-            ORDER BY COUNT(t.task_id) FILTER (WHERE t.status='OPEN') DESC,
+            ORDER BY COUNT(t.task_id) FILTER (
+                       WHERE t.status='OPEN'
+                         AND jsonb_array_length(t.connected_skus)>0
+                     ) DESC,
+                     COUNT(t.task_id) FILTER (WHERE t.status='OPEN') DESC,
                      i.detected_at DESC,i.incident_id
             LIMIT %s
             """,
@@ -220,6 +228,7 @@ def incident_inbox(*, limit: int = 50) -> dict:
         "detected_at":r[4].isoformat() if r[4] else None,
         "title":r[5],"event_type":r[6],"mode":r[7],"source":r[8],
         "open_evidence_tasks":int(r[9]),
+        "product_linked_evidence_tasks":int(r[10]),
     } for r in rows],
     "truth_rule":"An open incident is not proof of supplier damage."}
 

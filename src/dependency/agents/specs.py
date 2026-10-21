@@ -96,6 +96,7 @@ RECOVERY_PLANNER = AgentSpec(
         "get_supplier_capacity",
         "get_product_risk",
         "get_event_portfolio",
+        "optimize_recovery_allocation",
         "get_approved_alternatives",
         "get_transport_options",
         "find_similar_incidents",
@@ -110,7 +111,8 @@ RECOVERY_PLANNER = AgentSpec(
 Your job:
 - Generate practical recovery actions across every operationally affected SKU.
 - Use the event portfolio tool before narrowing to a single product.
-- Use deterministic candidate, component-feasibility, transport-feasibility, and recovery tools before calling a plan feasible.
+- Use deterministic candidate, component-feasibility, transport-feasibility, optimization, and recovery tools before calling a plan feasible.
+- Use the optimizer for scarce-supply allocation; do not manually choose customer allocations.
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.

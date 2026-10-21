@@ -7,6 +7,7 @@ from dependency.graph.event_impact import trace_business_event_impact
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
+from dependency.solver.optimization import optimize_recovery_allocation
 
 
 def _commercial_totals(sku: str) -> dict:
@@ -135,6 +136,17 @@ def plan_event_recovery(
             )
         )
 
+        optimized_allocation = (
+            optimize_recovery_allocation(
+                scenario_id=scenario_id,
+                sku=sku,
+                release_safety_stock=False,
+                include_provisional=True,
+            )
+            if operationally_affected
+            else None
+        )
+
         products.append(
             {
                 "sku": sku,
@@ -151,6 +163,7 @@ def plan_event_recovery(
                 "conservative_plan": conservative,
                 "emergency_plan": emergency,
                 "candidates": candidates,
+                "optimized_allocation": optimized_allocation,
                 "required_next_actions": _required_next_actions(candidates),
             }
         )
@@ -217,6 +230,16 @@ def plan_event_recovery(
     total_at_risk_margin = sum(
         float(p["commercial"]["at_risk_margin_eur"]) for p in products
     )
+    optimized_protected_margin = sum(
+        float(p["optimized_allocation"]["protected_margin_eur"])
+        for p in operational
+        if p.get("optimized_allocation")
+    )
+    optimized_transport_cost = sum(
+        float(p["optimized_allocation"]["incremental_transport_cost_eur"])
+        for p in operational
+        if p.get("optimized_allocation")
+    )
     requires_confirmation = any(
         p["conservative_plan"]["requires_supplier_confirmation"]
         or p["conservative_plan"].get("requires_material_confirmation", False)
@@ -245,6 +268,18 @@ def plan_event_recovery(
             "total_conservative_shortage_units": round(total_shortage, 2),
             "total_at_risk_revenue_eur": round(total_at_risk_revenue, 2),
             "total_at_risk_margin_eur": round(total_at_risk_margin, 2),
+            "optimized_protected_margin_eur": round(
+                optimized_protected_margin,
+                2,
+            ),
+            "optimized_incremental_transport_cost_eur": round(
+                optimized_transport_cost,
+                2,
+            ),
+            "optimized_net_protected_margin_eur": round(
+                optimized_protected_margin - optimized_transport_cost,
+                2,
+            ),
         },
         "operationally_affected_skus": [p["sku"] for p in operational],
         "exposure_only_skus": [p["sku"] for p in exposure_only],

@@ -25,6 +25,7 @@ class AgentContractTests(unittest.TestCase):
         self.assertIn("get_recovery_plan", AGENTS["recovery"].tool_names)
         self.assertIn("get_supplier_capacity", AGENTS["recovery"].tool_names)
         self.assertIn("get_event_portfolio", AGENTS["recovery"].tool_names)
+        self.assertIn("optimize_recovery_allocation", AGENTS["recovery"].tool_names)
         self.assertIn("check_component_feasibility", AGENTS["recovery"].tool_names)
         self.assertIn("check_recovery_transport", AGENTS["recovery"].tool_names)
         self.assertIn("request_human_approval", AGENTS["recovery"].tool_names)

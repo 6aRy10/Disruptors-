@@ -24,6 +24,7 @@ from dependency.solver.component_feasibility import evaluate_component_feasibili
 from dependency.solver.transport_feasibility import evaluate_recovery_transport
 from dependency.solver.material_timing import purchase_order_supply_by_date
 from dependency.solver.portfolio import plan_event_recovery
+from dependency.solver.optimization import optimize_recovery_allocation
 from dependency.solver.recovery import plan_sku_recovery
 
 
@@ -618,6 +619,7 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "get_recovery_plan": lambda: plan_sku_recovery(**args),
         "get_product_risk": lambda: scenario_product_risk(**args),
         "get_event_portfolio": lambda: plan_event_recovery(**args),
+        "optimize_recovery_allocation": lambda: optimize_recovery_allocation(**args),
     }
     if name not in tools:
         raise ValueError(f"Unknown agent tool: {name}")
@@ -993,6 +995,28 @@ TOOL_SCHEMAS = [
             "required": ["scenario_id", "sku", "release_safety_stock"],
             "additionalProperties": False,
         },
+    },
+    {
+        "type": "function",
+        "name": "optimize_recovery_allocation",
+        "description": "Run deterministic scarce-supply optimization for one SKU. It protects explicit customer priority first, then maximizes protected gross margin minus incremental recovery transport cost.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scenario_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "release_safety_stock": {"type": "boolean"},
+                "include_provisional": {"type": "boolean"}
+            },
+            "required": [
+                "scenario_id",
+                "sku",
+                "release_safety_stock",
+                "include_provisional"
+            ],
+            "additionalProperties": False
+        }
     },
     {
         "type": "function",

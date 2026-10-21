@@ -214,3 +214,11 @@ The script keeps incident IDs, confirms no damage, sends no messages, and
 does not reset the private twin. Re-running is idempotent. To limit a specific
 event, pass `--event-id GDACS-WF-1032942`. The new regression test constructs
 an unfamiliar simulated wildfire and proves the recovery works in PostgreSQL.
+
+## Dashboard open incidents survive feed noise
+
+The dashboard still shows up to fifty recent feed events, plus any older
+unresolved incident events. The added records preserve public event source and
+time and are not synthetic events. An open investigation such as
+`GDACS-WF-1032942` remains selectable even when later GDACS/USGS observations
+arrive. Source observations do not become confirmed facility damage.

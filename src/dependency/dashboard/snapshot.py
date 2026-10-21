@@ -213,6 +213,42 @@ def _selected_event_id(
     return events[0]["event_id"] if events else None
 
 
+def _event_feed_with_open_incidents(
+    recent_events: list[dict],
+    open_incidents: list[dict],
+) -> list[dict]:
+    """Never bury unresolved incidents beneath the most recent feed noise."""
+    present={e["event_id"] for e in recent_events}
+    missing=sorted({
+        incident["event_id"] for incident in open_incidents
+        if incident["event_id"] not in present
+    })
+    if not missing:
+        return recent_events
+    with connect() as conn:
+        rows=conn.execute(
+            """
+            SELECT event_id,event_type,mode,source,title,occurred_or_effective_at,
+                   ingested_at,current_as_of,source_url
+            FROM external_events
+            WHERE event_id=ANY(%s)
+            ORDER BY ingested_at DESC,event_id
+            """,
+            (missing,),
+        ).fetchall()
+    pinned=[
+        {
+            "event_id":r[0],"event_type":r[1],"mode":r[2],
+            "source":r[3],"title":r[4],
+            "occurred_or_effective_at":r[5].isoformat() if r[5] else None,
+            "ingested_at":r[6].isoformat() if r[6] else None,
+            "current_as_of":r[7].isoformat() if r[7] else None,
+            "source_url":r[8],
+        } for r in rows
+    ]
+    return pinned+recent_events
+
+
 def dashboard_snapshot(
     *,
     event_id: str | None = None,
@@ -260,6 +296,7 @@ def dashboard_snapshot(
         )
 
     open_incidents = _open_incidents()
+    events = _event_feed_with_open_incidents(events, open_incidents)
     pending_approvals = list_approval_requests(
         status="PENDING",
         incident_id=None,

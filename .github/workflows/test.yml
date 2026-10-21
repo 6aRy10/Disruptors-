@@ -79,6 +79,9 @@ jobs:
       - name: Test network graph views
         run: python -m unittest tests.test_network_views -v
 
+      - name: Test unresolved events stay visible in dashboard feed
+        run: python -m unittest tests.test_open_incident_feed -v
+
       - name: Test judge dashboard snapshot
         run: python -m unittest tests.test_dashboard -v
 

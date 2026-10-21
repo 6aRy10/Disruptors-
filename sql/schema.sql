@@ -30,6 +30,90 @@ CREATE TABLE IF NOT EXISTS facilities (
 );
 CREATE INDEX IF NOT EXISTS facilities_geom_gix ON facilities USING GIST (geom);
 
+-- Full public adidas network. This is separate from the smaller operational
+-- digital twin because most public facilities do not have private BOM/order links.
+CREATE TABLE IF NOT EXISTS network_facilities (
+  network_facility_id text PRIMARY KEY,
+  os_id text,
+  name text NOT NULL,
+  official_name text,
+  country text,
+  city text,
+  province text,
+  address text,
+  tiers text,
+  product_categories text,
+  list_types text,
+  parent_organizations text,
+  workers_count numeric,
+  relationship_count int NOT NULL DEFAULT 1,
+  geom geography(Point,4326),
+  coordinate_provenance text NOT NULL,
+  official_provenance text NOT NULL,
+  match_methods text,
+  source_url text,
+  osh_url text
+);
+CREATE INDEX IF NOT EXISTS network_facilities_geom_gix
+  ON network_facilities USING GIST (geom);
+CREATE INDEX IF NOT EXISTS network_facilities_country_idx
+  ON network_facilities(country);
+
+CREATE TABLE IF NOT EXISTS network_facility_relationships (
+  relationship_id text PRIMARY KEY,
+  network_facility_id text REFERENCES network_facilities(network_facility_id),
+  list_type text NOT NULL,
+  source_row int,
+  country text,
+  account_name text,
+  address text,
+  city text,
+  province text,
+  zip_code text,
+  tier text,
+  product_categories text,
+  workers_count numeric,
+  female_workers numeric,
+  male_workers numeric,
+  migrant_workers numeric,
+  parent_organization text,
+  trade_union text,
+  worker_representation text,
+  cba text,
+  os_id text,
+  match_method text,
+  match_score numeric,
+  provenance_class text NOT NULL,
+  source_url text
+);
+
+CREATE TABLE IF NOT EXISTS network_parent_groups (
+  parent_id text PRIMARY KEY,
+  parent_name text NOT NULL,
+  provenance_class text NOT NULL,
+  source_url text
+);
+
+CREATE TABLE IF NOT EXISTS network_parent_edges (
+  network_facility_id text REFERENCES network_facilities(network_facility_id),
+  parent_id text REFERENCES network_parent_groups(parent_id),
+  relationship_type text NOT NULL,
+  provenance_class text NOT NULL,
+  source_url text,
+  PRIMARY KEY(network_facility_id, parent_id)
+);
+
+-- Links the private operational twin to the public network. A public facility
+-- can exist without a business link; only linked nodes continue into BOM/orders.
+CREATE TABLE IF NOT EXISTS facility_network_links (
+  facility_id text REFERENCES facilities(facility_id),
+  network_facility_id text REFERENCES network_facilities(network_facility_id),
+  match_method text NOT NULL,
+  match_confidence numeric NOT NULL CHECK (match_confidence BETWEEN 0 AND 1),
+  provenance_class text NOT NULL,
+  PRIMARY KEY(facility_id, network_facility_id)
+);
+
 CREATE TABLE IF NOT EXISTS products (
   sku text PRIMARY KEY,
   name text NOT NULL,

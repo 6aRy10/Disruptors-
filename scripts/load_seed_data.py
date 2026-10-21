@@ -8,12 +8,22 @@ from dependency.db.connection import connect
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "config"
+DATA = ROOT / "data" / "normalized"
 SCHEMA = ROOT / "sql" / "schema.sql"
 
 
 def read_csv(name: str) -> list[dict]:
     with (CONFIG / name).open(newline="", encoding="utf-8-sig") as f:
         return list(csv.DictReader(f))
+
+
+def read_data_csv(name: str) -> list[dict]:
+    with (DATA / name).open(newline="", encoding="utf-8-sig") as f:
+        return list(csv.DictReader(f))
+
+
+def normalize_name(value: str) -> str:
+    return "".join(ch.lower() for ch in str(value or "") if ch.isalnum())
 
 
 def num(value):
@@ -37,6 +47,95 @@ def boolean(value):
 def load() -> None:
     with connect() as conn:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
+
+        network_rows = read_data_csv("adidas_2026_network_facilities.csv")
+
+        # Deterministic reload of the public network.
+        conn.execute("DELETE FROM facility_network_links")
+        conn.execute("DELETE FROM network_parent_edges")
+        conn.execute("DELETE FROM network_facility_relationships")
+        conn.execute("DELETE FROM network_parent_groups")
+        conn.execute("DELETE FROM network_facilities")
+
+        for r in network_rows:
+            geom_sql = (
+                "ST_SetSRID(ST_MakePoint(%s,%s),4326)::geography"
+                if r["lat"] and r["lng"]
+                else "NULL"
+            )
+            params = [
+                r["facility_id"], r["os_id"] or None, r["name"], r["official_name"],
+                r["country"], r["city"], r["province"], r["address"], r["tiers"],
+                r["product_categories"], r["list_types"], r["parent_organizations"],
+                num(r["workers_count"]), integer(r["relationship_count"]),
+            ]
+            if r["lat"] and r["lng"]:
+                params.extend([num(r["lng"]), num(r["lat"])])
+            params.extend([
+                r["coordinate_provenance"], r["official_provenance"],
+                r["match_methods"], r["source_url"], r["osh_url"],
+            ])
+            conn.execute(
+                f"""
+                INSERT INTO network_facilities(
+                  network_facility_id,os_id,name,official_name,country,city,province,address,
+                  tiers,product_categories,list_types,parent_organizations,workers_count,
+                  relationship_count,geom,coordinate_provenance,official_provenance,
+                  match_methods,source_url,osh_url
+                ) VALUES (
+                  %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,{geom_sql},%s,%s,%s,%s,%s
+                )
+                """,
+                tuple(params),
+            )
+
+        for r in read_data_csv("adidas_2026_list_relationships.csv"):
+            conn.execute(
+                """
+                INSERT INTO network_facility_relationships(
+                  relationship_id,network_facility_id,list_type,source_row,country,
+                  account_name,address,city,province,zip_code,tier,product_categories,
+                  workers_count,female_workers,male_workers,migrant_workers,
+                  parent_organization,trade_union,worker_representation,cba,os_id,
+                  match_method,match_score,provenance_class,source_url
+                ) VALUES (
+                  %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                  %s,%s,%s,%s,%s
+                )
+                """,
+                (
+                    r["relationship_id"], r["network_facility_id"] or None, r["list_type"],
+                    integer(r["source_row"]), r["country"], r["account_name"], r["address"],
+                    r["city"], r["province"], r["zip_code"], r["tier"],
+                    r["product_categories"], num(r["workers_count"]), num(r["female_workers"]),
+                    num(r["male_workers"]), num(r["migrant_workers"]),
+                    r["parent_organization"], r["trade_union"], r["worker_representation"],
+                    r["cba"], r["os_id"] or None, r["match_method"],
+                    num(r["match_score"]), r["provenance_class"], r["source_url"],
+                ),
+            )
+
+        for r in read_data_csv("adidas_2026_parent_groups.csv"):
+            conn.execute(
+                """
+                INSERT INTO network_parent_groups(parent_id,parent_name,provenance_class,source_url)
+                VALUES (%s,%s,%s,%s)
+                """,
+                (r["parent_id"], r["parent_name"], r["provenance_class"], r["source_url"]),
+            )
+
+        for r in read_data_csv("adidas_2026_parent_edges.csv"):
+            conn.execute(
+                """
+                INSERT INTO network_parent_edges(
+                  network_facility_id,parent_id,relationship_type,provenance_class,source_url
+                ) VALUES (%s,%s,%s,%s,%s)
+                """,
+                (
+                    r["facility_id"], r["parent_id"], r["relationship_type"],
+                    r["provenance_class"], r["source_url"],
+                ),
+            )
 
         for r in read_csv("facilities_demo.csv"):
             conn.execute(
@@ -62,6 +161,39 @@ def load() -> None:
                     r["provenance_class"], r["source_url"],
                 ),
             )
+
+        # Link the operational demo nodes to their public network records.
+        by_official = {}
+        by_name = {}
+        for n in network_rows:
+            country_key = normalize_name(n["country"])
+            by_official.setdefault(
+                (country_key, normalize_name(n["official_name"])), []
+            ).append(n)
+            by_name.setdefault(
+                (country_key, normalize_name(n["name"])), []
+            ).append(n)
+
+        for d in read_csv("facilities_demo.csv"):
+            key = (normalize_name(d["country"]), normalize_name(d["account_name"]))
+            candidates = by_official.get(key) or by_name.get(key) or []
+            if len(candidates) == 1:
+                n = candidates[0]
+                conn.execute(
+                    """
+                    INSERT INTO facility_network_links(
+                      facility_id,network_facility_id,match_method,match_confidence,provenance_class
+                    ) VALUES (%s,%s,%s,%s,%s)
+                    ON CONFLICT (facility_id,network_facility_id) DO UPDATE SET
+                      match_method=EXCLUDED.match_method,
+                      match_confidence=EXCLUDED.match_confidence,
+                      provenance_class=EXCLUDED.provenance_class
+                    """,
+                    (
+                        d["facility_id"], n["facility_id"], "EXACT_NORMALIZED_NAME_COUNTRY",
+                        1.0, "PUBLIC_DERIVED",
+                    ),
+                )
 
         for r in read_csv("products.csv"):
             conn.execute(
@@ -319,6 +451,7 @@ def load() -> None:
         conn.commit()
 
     print("Seed data loaded into PostgreSQL/PostGIS.")
+    print(f"Public adidas network facilities loaded: {len(network_rows)}")
 
 
 if __name__ == "__main__":

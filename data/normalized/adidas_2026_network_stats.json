@@ -1,0 +1,20 @@
+{
+  "source_date": "2026-07-01",
+  "official_rows": 836,
+  "primary_and_subcontractor_rows": 455,
+  "licensee_rows": 243,
+  "wet_process_rows": 138,
+  "open_supply_hub_adidas_facilities": 770,
+  "network_facilities_with_coordinates": 770,
+  "official_rows_linked_to_network": 683,
+  "exact_name_matches": 610,
+  "fuzzy_matches": 73,
+  "unmatched_official_rows": 153,
+  "countries": 48,
+  "parent_groups": 247,
+  "note": "The geospatial network uses all Open Supply Hub rows in the supplied adidas July 2026 contributor download. Official adidas list rows are retained separately and linked only when the match passes a high-precision rule.",
+  "provenance": {
+    "official_list_rows": "VERIFIED_PUBLIC",
+    "open_supply_hub_coordinates": "PUBLIC_DERIVED"
+  }
+}

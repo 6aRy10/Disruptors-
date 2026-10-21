@@ -79,6 +79,12 @@ jobs:
       - name: Test network graph views
         run: python -m unittest tests.test_network_views -v
 
+      - name: Test Hermes map and facility profile contracts
+        run: python -m unittest tests.test_app_data_contracts -v
+
+      - name: Test Hermes world map and facility drilldown against PostgreSQL
+        run: python -m unittest tests.test_app_data_db -v
+
       - name: Test unresolved events stay visible in dashboard feed
         run: python -m unittest tests.test_open_incident_feed -v
 

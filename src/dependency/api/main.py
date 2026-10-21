@@ -64,6 +64,7 @@ from dependency.solver.optimization import optimize_recovery_allocation
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
+from dependency.graph.app_views import map_facilities, facility_profile
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -332,6 +333,39 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.get("/app-data/map/facilities")
+def app_map_facilities(
+    west: float = Query(default=-180,ge=-180,le=180),
+    south: float = Query(default=-85,ge=-90,le=90),
+    east: float = Query(default=180,ge=-180,le=180),
+    north: float = Query(default=85,ge=-90,le=90),
+    country: str | None = Query(default=None,max_length=120),
+    linked_only: bool = False,
+    limit: int = Query(default=1000,ge=1,le=2500),
+):
+    try:
+        return map_facilities(
+            west=west,south=south,east=east,north=north,
+            country=country,business_linked_only=linked_only,limit=limit,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
+
+
+@app.get("/app-data/facilities/{network_facility_id}")
+def app_facility_profile(
+    network_facility_id: str,
+    max_products: int = Query(default=25,ge=1,le=100),
+):
+    try:
+        return facility_profile(
+            network_facility_id=network_facility_id,
+            max_products=max_products,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404,detail=str(exc)) from exc
 
 
 @app.get("/network/stats")

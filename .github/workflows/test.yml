@@ -47,6 +47,9 @@ jobs:
       - name: Load PostgreSQL/PostGIS seed
         run: python scripts/load_seed_data.py
 
+      - name: Test enterprise data scale
+        run: python -m unittest tests.test_data_scale -v
+
       - name: Test network and hidden dependencies
         run: python -m unittest tests.test_network_and_dependencies -v
 

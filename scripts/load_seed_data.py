@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from dependency.db.connection import connect
+from dependency.data.enterprise_scale import load_enterprise_scale
 from dependency.memory.seed import load_seed_memory
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -455,6 +456,11 @@ def load() -> None:
                 ),
             )
 
+        # Expand the private enterprise twin after loading the hand-curated
+        # flagship records. Facility identities come from the real public
+        # network; all generated business relationships remain SIMULATED_PRIVATE.
+        scale_manifest = load_enterprise_scale(conn, network_rows)
+
         event = json.loads((CONFIG / "historical_event.json").read_text(encoding="utf-8"))
         conn.execute(
             """
@@ -593,6 +599,7 @@ def load() -> None:
 
     print("Seed data loaded into PostgreSQL/PostGIS.")
     print(f"Public adidas network facilities loaded: {len(network_rows)}")
+    print(f"Generated private-twin rows loaded: {scale_manifest['total_generated_rows']}")
 
 
 if __name__ == "__main__":

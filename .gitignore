@@ -20,3 +20,8 @@ Thumbs.db
 *.log
 dist/
 build/
+
+
+# Deterministic generated enterprise-scale private twin
+data/generated/private_twin/*.csv
+data/generated/private_twin/manifest.json

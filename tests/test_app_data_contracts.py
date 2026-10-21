@@ -2,7 +2,7 @@
 from datetime import date
 import unittest
 from unittest.mock import patch,MagicMock
-from dependency.graph.app_views import map_facilities,facility_profile
+from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox
 
 
 class AppDataContracts(unittest.TestCase):
@@ -56,6 +56,22 @@ class AppDataContracts(unittest.TestCase):
         self.assertEqual(result["connected_products"][0]["relations"],["UPSTREAM_MATERIAL"])
         self.assertEqual(result["total_connected_revenue_eur"],360000)
         self.assertEqual(result["operational_links"][0]["provenance_class"],"PUBLIC_DERIVED")
+
+
+    @patch("dependency.graph.app_views.connect")
+    def test_inbox_prioritizes_real_open_evidence_work(self,connect):
+        conn=MagicMock()
+        from datetime import UTC,datetime
+        now=datetime.now(UTC)
+        conn.execute.return_value.fetchall.return_value=[
+            ("INC-1","GDACS-1","INVESTIGATING",None,now,"Wildfire",
+             "wildfire","LIVE","GDACS",2),
+        ]
+        connect.return_value.__enter__.return_value=conn
+        inbox=incident_inbox()
+        self.assertEqual(inbox["incidents"][0]["open_evidence_tasks"],2)
+        self.assertEqual(inbox["incidents"][0]["mode"],"LIVE")
+        self.assertIn("not proof",inbox["truth_rule"])
 
 
 if __name__=="__main__":

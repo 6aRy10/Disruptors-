@@ -191,3 +191,34 @@ def facility_profile(*, network_facility_id: str, max_products: int = 25) -> dic
             "selection does not confirm any disruption."
         ),
     }
+
+def incident_inbox(*, limit: int = 50) -> dict:
+    """List real unresolved incidents and outstanding tasks for first-session focus."""
+    if not 1 <= limit <= 200:
+        raise ValueError("limit must be between 1 and 200.")
+    with connect() as conn:
+        rows=conn.execute(
+            """
+            SELECT i.incident_id,i.event_id,i.status,i.scenario_id,
+                   i.detected_at,e.title,e.event_type,e.mode,e.source,
+                   COUNT(t.task_id) FILTER (WHERE t.status='OPEN') AS open_tasks
+            FROM incidents i
+            JOIN external_events e ON e.event_id=i.event_id
+            LEFT JOIN incident_investigation_tasks t
+              ON t.incident_id=i.incident_id
+            WHERE i.status IN ('OPEN','INVESTIGATING')
+            GROUP BY i.incident_id,e.event_id
+            ORDER BY COUNT(t.task_id) FILTER (WHERE t.status='OPEN') DESC,
+                     i.detected_at DESC,i.incident_id
+            LIMIT %s
+            """,
+            (limit,),
+        ).fetchall()
+    return {"incidents":[{
+        "incident_id":r[0],"event_id":r[1],"status":r[2],
+        "scenario_id":r[3],
+        "detected_at":r[4].isoformat() if r[4] else None,
+        "title":r[5],"event_type":r[6],"mode":r[7],"source":r[8],
+        "open_evidence_tasks":int(r[9]),
+    } for r in rows],
+    "truth_rule":"An open incident is not proof of supplier damage."}

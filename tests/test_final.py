@@ -59,13 +59,13 @@ class DependencyFinalTests(unittest.TestCase):
     def test_tariff_ground_truth(self):
         result = tariff_impact(
             customs_value_per_unit=60,
-            additional_rate=0.20,
+            additional_rate=0.125,
             units=2500,
             baseline_unit_margin=47,
         )
-        self.assertEqual(result["additional_cost_per_unit"], 12.0)
-        self.assertEqual(result["total_additional_cost"], 30000.0)
-        self.assertEqual(result["new_unit_margin"], 35.0)
+        self.assertEqual(result["additional_cost_per_unit"], 7.5)
+        self.assertEqual(result["total_additional_cost"], 18750.0)
+        self.assertEqual(result["new_unit_margin"], 39.5)
 
 
 if __name__ == "__main__":

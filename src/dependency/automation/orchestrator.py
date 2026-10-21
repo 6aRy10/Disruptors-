@@ -238,6 +238,7 @@ def handle_event(
         "plan.generated",
         "approval.requested",
         "decision.confirmed",
+        "action.executed",
     }:
         return {
             "status": "OBSERVED",

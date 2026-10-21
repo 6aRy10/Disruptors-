@@ -16,6 +16,7 @@ TOPIC_APPROVAL_REQUESTED = "approval.requested"
 TOPIC_SUPPLIER_CONFIRMATION_REQUESTED = "supplier.confirmation.requested"
 TOPIC_SUPPLIER_CONFIRMATION_REPLY = "supplier.confirmation.reply_received"
 TOPIC_DECISION_CONFIRMED = "decision.confirmed"
+TOPIC_ACTION_EXECUTED = "action.executed"
 
 
 def enqueue_outbox(conn, *, topic: str, event_key: str, payload: dict) -> str:

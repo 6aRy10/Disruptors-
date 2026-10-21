@@ -437,15 +437,87 @@ function renderOperations() {
     </div>
   `).join("") || '<div class="muted">No active supplier requests.</div>';
 
-  $("approvals").innerHTML = (ops.pending_approvals || []).map(row => `
-    <div class="compact-row">
-      <div>
-        <strong>${esc(row.action_type)} · ${esc(row.sku || "")}</strong>
-        <span>${esc(row.reason)} · ${esc(shortDate(row.requested_at))}</span>
+  const pending = ops.pending_approvals || [];
+  const approved = ops.approved_actions_waiting_execution || [];
+  const rows = [
+    ...pending.map(row => `
+      <div class="compact-row approval-row">
+        <div>
+          <strong>${esc(row.action_type)} · ${esc(row.sku || "")}</strong>
+          <span>${esc(row.reason)} · ${esc(shortDate(row.requested_at))}</span>
+          <div class="mini-actions">
+            <button class="mini-button approve-btn" data-request-id="${esc(row.request_id)}">Approve</button>
+            <button class="mini-button reject-btn" data-request-id="${esc(row.request_id)}">Reject</button>
+          </div>
+        </div>
+        <span class="badge warning">${esc(row.status)}</span>
       </div>
-      <span class="badge warning">${esc(row.status)}</span>
-    </div>
-  `).join("") || '<div class="muted">No pending human approvals.</div>';
+    `),
+    ...approved.map(row => `
+      <div class="compact-row approval-row">
+        <div>
+          <strong>${esc(row.action_type)} · ${esc(row.sku || "")}</strong>
+          <span>Approved by ${esc(row.decided_by || "planner")} · waiting for explicit execution</span>
+          <div class="mini-actions">
+            <button class="mini-button execute-btn" data-request-id="${esc(row.request_id)}">Execute approved action</button>
+          </div>
+        </div>
+        <span class="badge success">APPROVED</span>
+      </div>
+    `)
+  ];
+  $("approvals").innerHTML = rows.join("") || '<div class="muted">No pending approvals or approved actions waiting for execution.</div>';
+
+  document.querySelectorAll(".approve-btn").forEach(btn => {
+    btn.addEventListener("click", () => decideApproval(btn.dataset.requestId, "APPROVED"));
+  });
+  document.querySelectorAll(".reject-btn").forEach(btn => {
+    btn.addEventListener("click", () => decideApproval(btn.dataset.requestId, "REJECTED"));
+  });
+  document.querySelectorAll(".execute-btn").forEach(btn => {
+    btn.addEventListener("click", () => executeApproval(btn.dataset.requestId));
+  });
+}
+
+async function decideApproval(requestId, decision) {
+  const reason = prompt(
+    decision === "APPROVED"
+      ? "Why are you approving this action?"
+      : "Why are you rejecting this action?",
+    decision === "APPROVED"
+      ? "Approved after reviewing deterministic evidence."
+      : "Rejected after reviewing deterministic evidence."
+  );
+  if (reason === null) return;
+  try {
+    await api(`/approvals/${encodeURIComponent(requestId)}/decision`, {
+      method: "POST",
+      body: JSON.stringify({
+        decision,
+        decided_by: "Judge / Planner",
+        decision_reason: reason,
+      }),
+    });
+    toast(`Action ${decision.toLowerCase()}.`);
+    await loadSnapshot(state.selectedEventId);
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function executeApproval(requestId) {
+  if (!confirm("Execute this approved operational action now? This can change state and invalidate existing plans.")) return;
+  try {
+    const result = await api(`/approvals/${encodeURIComponent(requestId)}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ executed_by: "Judge / Planner" }),
+    });
+    const version = result?.result?.state_update?.state_version;
+    toast(`Approved action executed${version != null ? ` · state version ${version}` : ""}.`);
+    await loadSnapshot(state.selectedEventId);
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 
 function renderTruth() {

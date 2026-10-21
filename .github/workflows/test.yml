@@ -125,6 +125,9 @@ jobs:
       - name: Test human approval workflow
         run: python -m unittest tests.test_approvals -v
 
+      - name: Test approved action execution
+        run: python -m unittest tests.test_execution -v
+
       - name: Test supplier outreach workflow
         run: python -m unittest tests.test_supplier_outreach -v
 

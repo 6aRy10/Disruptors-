@@ -306,6 +306,14 @@ main { padding: 18px 22px 60px; }
 }
 .compact-row strong { display:block; font-size:11px; }
 .compact-row span { color:var(--muted); font-size:9px; }
+.mini-actions { display:flex; gap:6px; margin-top:7px; flex-wrap:wrap; }
+.mini-button {
+  border:1px solid #2b5048; border-radius:6px; padding:4px 7px;
+  color:#cfe3dd; background:#0b1916; font-size:9px; font-weight:700;
+}
+.mini-button:hover { border-color:var(--accent); color:var(--accent); }
+.mini-button.reject-btn { border-color:rgba(255,125,121,.35); color:#ffaaa6; }
+.mini-button.execute-btn { border-color:rgba(114,242,182,.5); color:var(--accent); }
 
 .control-section {
   margin-top: 16px;

@@ -472,6 +472,23 @@ CREATE INDEX IF NOT EXISTS approval_requests_status_idx
 CREATE INDEX IF NOT EXISTS approval_requests_incident_idx
   ON approval_requests(incident_id, requested_at);
 
+CREATE TABLE IF NOT EXISTS action_executions (
+  execution_id text PRIMARY KEY,
+  approval_request_id text NOT NULL UNIQUE
+    REFERENCES approval_requests(request_id) ON DELETE CASCADE,
+  incident_id text NOT NULL REFERENCES incidents(incident_id) ON DELETE CASCADE,
+  action_type text NOT NULL,
+  action_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL CHECK (status IN ('RUNNING','SUCCEEDED','FAILED')),
+  started_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz,
+  executed_by text NOT NULL,
+  result_json jsonb,
+  error_text text
+);
+CREATE INDEX IF NOT EXISTS action_executions_incident_idx
+  ON action_executions(incident_id, started_at);
+
 CREATE TABLE IF NOT EXISTS incident_decisions (
   decision_id text PRIMARY KEY,
   incident_id text REFERENCES incidents(incident_id) ON DELETE CASCADE,

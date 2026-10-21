@@ -5,6 +5,7 @@ from dependency.graph.event_impact import trace_business_event_impact
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.ingest.events import list_recent_events
 from dependency.services.approvals import list_approval_requests
+from dependency.services.execution import list_action_executions
 from dependency.solver.portfolio import plan_event_recovery
 
 
@@ -50,6 +51,43 @@ def _open_incidents(limit: int = 50) -> list[dict]:
             "detected_at": r[6].isoformat() if r[6] else None,
             "updated_at": r[7].isoformat() if r[7] else None,
             "provenance_class": r[8],
+        }
+        for r in rows
+    ]
+
+
+def _approved_unexecuted(limit: int = 50) -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+              a.request_id,a.incident_id,a.scenario_id,a.plan_record_id,a.sku,
+              a.action_type,a.action_payload,a.reason,a.decided_by,
+              a.decision_reason,a.decided_at
+            FROM approval_requests a
+            LEFT JOIN action_executions x
+              ON x.approval_request_id=a.request_id
+            WHERE a.status='APPROVED'
+              AND x.execution_id IS NULL
+            ORDER BY a.decided_at DESC,a.request_id
+            LIMIT %s
+            """,
+            (int(limit),),
+        ).fetchall()
+    return [
+        {
+            "request_id": r[0],
+            "incident_id": r[1],
+            "scenario_id": r[2],
+            "plan_record_id": r[3],
+            "sku": r[4],
+            "action_type": r[5],
+            "action_payload": r[6],
+            "reason": r[7],
+            "decided_by": r[8],
+            "decision_reason": r[9],
+            "decided_at": r[10].isoformat() if r[10] else None,
+            "status": "APPROVED_AWAITING_EXECUTION",
         }
         for r in rows
     ]
@@ -183,11 +221,14 @@ def dashboard_snapshot(
         limit=100,
     )
     supplier_requests = _supplier_requests()
+    approved_unexecuted = _approved_unexecuted()
+    executions = list_action_executions(limit=25)
 
     metrics = {
         "state_version": _state_version(),
         "open_incidents": len(open_incidents),
         "pending_approvals": len(pending_approvals),
+        "approved_actions_waiting_execution": len(approved_unexecuted),
         "active_supplier_requests": len(supplier_requests),
         "selected_event_products": (
             len((impact or {}).get("products", []))
@@ -229,6 +270,8 @@ def dashboard_snapshot(
         "operations": {
             "open_incidents": open_incidents,
             "pending_approvals": pending_approvals,
+            "approved_actions_waiting_execution": approved_unexecuted,
+            "executions": executions,
             "supplier_requests": supplier_requests,
         },
         "truth_model": {

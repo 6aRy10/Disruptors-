@@ -32,6 +32,10 @@ from dependency.services.approvals import (
     list_approval_requests,
     request_human_approval,
 )
+from dependency.services.execution import (
+    execute_approved_action,
+    list_action_executions,
+)
 from dependency.services.demo_reset import reset_demo_state
 from dependency.services.scenarios import confirm_event_facility_state
 from dependency.services.state_updates import (
@@ -179,6 +183,10 @@ class ApprovalDecisionBody(BaseModel):
     decision: str
     decided_by: str
     decision_reason: str
+
+
+class ActionExecuteBody(BaseModel):
+    executed_by: str
 
 
 class SupplierCapacityRequestBody(BaseModel):
@@ -852,6 +860,30 @@ def approval_decision(request_id: str, body: ApprovalDecisionBody):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/approvals/{request_id}/execute")
+def approval_execute(request_id: str, body: ActionExecuteBody):
+    try:
+        return execute_approved_action(
+            request_id=request_id,
+            executed_by=body.executed_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/executions")
+def executions(
+    incident_id: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    return {
+        "executions": list_action_executions(
+            incident_id=incident_id,
+            limit=limit,
+        )
+    }
 
 
 @app.get("/incidents/{incident_id}")

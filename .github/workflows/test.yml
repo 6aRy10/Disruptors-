@@ -47,5 +47,20 @@ jobs:
       - name: Load PostgreSQL/PostGIS seed
         run: python scripts/load_seed_data.py
 
-      - name: Run tests
-        run: python -m unittest discover -v
+      - name: Test network and hidden dependencies
+        run: python -m unittest tests.test_network_and_dependencies -v
+
+      - name: Test ground truth
+        run: python -m unittest tests.test_ground_truth -v
+
+      - name: Test database impact
+        run: python -m unittest tests.test_db_impact -v
+
+      - name: Test recovery
+        run: python -m unittest tests.test_recovery -v
+
+      - name: Test deterministic core
+        run: python -m unittest tests.test_final -v
+
+      - name: Test agent contracts
+        run: python -m unittest tests.test_agents -v

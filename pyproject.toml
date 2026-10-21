@@ -13,6 +13,7 @@ dependencies = [
   "confluent-kafka>=2.5",
   "psycopg[binary]>=3.2",
   "python-dotenv>=1.0",
+  "openai>=1.66",
 ]
 
 [tool.setuptools.packages.find]

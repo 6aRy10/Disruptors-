@@ -185,3 +185,13 @@ portfolio for the same operational state version. Repeated SKU messages then
 skip duplicate graph work. The transport still needs one active consumer
 until concurrent claim-locking is implemented; avoid two workers writing the
 same incident generation in parallel.
+
+## Local versus Kafka event counts
+
+`python -m scripts.team_status` now reports three separate quantities:
+`processed_local_outbox_messages` means the PostgreSQL orchestrator
+successfully consumed the event; `pending_local_outbox_messages` means there
+is no successful consumption record yet; `unpublished_outbox_messages`
+means a Kafka publication timestamp has not been recorded. A locally
+processed event can still be unpublished to Kafka. Do not treat the latter as
+an incident-processing failure or clear the outbox just to make it zero.

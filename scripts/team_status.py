@@ -47,6 +47,23 @@ def status_report() -> dict:
                     result["runtime"]["failed_incident_consumptions"] = int(conn.execute(
                         "SELECT COUNT(*) FROM event_consumptions WHERE status='ERROR' AND consumer_name='incident-orchestrator'"
                     ).fetchone()[0])
+                    result["runtime"]["processed_local_outbox_messages"] = int(conn.execute(
+                        """
+                        SELECT COUNT(*) FROM event_consumptions
+                        WHERE status='SUCCESS' AND consumer_name='incident-orchestrator'
+                        """
+                    ).fetchone()[0])
+                    result["runtime"]["pending_local_outbox_messages"] = int(conn.execute(
+                        """
+                        SELECT COUNT(*) FROM event_outbox o
+                        WHERE NOT EXISTS (
+                          SELECT 1 FROM event_consumptions c
+                          WHERE c.outbox_id=o.outbox_id
+                            AND c.consumer_name='incident-orchestrator'
+                            AND c.status='SUCCESS'
+                        )
+                        """
+                    ).fetchone()[0])
             if missing:
                 result["status"] = "SCHEMA_INCOMPLETE"
             elif (

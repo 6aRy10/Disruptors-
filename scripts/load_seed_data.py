@@ -38,6 +38,20 @@ def integer(value):
     return int(float(value))
 
 
+def optional_numeric(value):
+    """Parse a public numeric field when it is truly numeric.
+
+    Public facility datasets sometimes use ranges such as 501-1000. Those are
+    preserved in source data but not coerced into a false point estimate.
+    """
+    if value in (None, ""):
+        return None
+    try:
+        return float(str(value).replace(",", ""))
+    except ValueError:
+        return None
+
+
 def boolean(value):
     if value in (None, ""):
         return None
@@ -67,7 +81,7 @@ def load() -> None:
                 r["facility_id"], r["os_id"] or None, r["name"], r["official_name"],
                 r["country"], r["city"], r["province"], r["address"], r["tiers"],
                 r["product_categories"], r["list_types"], r["parent_organizations"],
-                num(r["workers_count"]), integer(r["relationship_count"]),
+                optional_numeric(r["workers_count"]), integer(r["relationship_count"]),
             ]
             if r["lat"] and r["lng"]:
                 params.extend([num(r["lng"]), num(r["lat"])])
@@ -107,8 +121,8 @@ def load() -> None:
                     r["relationship_id"], r["network_facility_id"] or None, r["list_type"],
                     integer(r["source_row"]), r["country"], r["account_name"], r["address"],
                     r["city"], r["province"], r["zip_code"], r["tier"],
-                    r["product_categories"], num(r["workers_count"]), num(r["female_workers"]),
-                    num(r["male_workers"]), num(r["migrant_workers"]),
+                    r["product_categories"], optional_numeric(r["workers_count"]), optional_numeric(r["female_workers"]),
+                    optional_numeric(r["male_workers"]), optional_numeric(r["migrant_workers"]),
                     r["parent_organization"], r["trade_union"], r["worker_representation"],
                     r["cba"], r["os_id"] or None, r["match_method"],
                     num(r["match_score"]), r["provenance_class"], r["source_url"],

@@ -195,3 +195,22 @@ is no successful consumption record yet; `unpublished_outbox_messages`
 means a Kafka publication timestamp has not been recorded. A locally
 processed event can still be unpublished to Kafka. Do not treat the latter as
 an incident-processing failure or clear the outbox just to make it zero.
+
+## Repair already-consumed live incidents without resetting data
+
+Before evidence tasks existed, local event consumers could save an incident
+successfully without generating its next evidence request. Such events are
+not retried automatically because the outbox consumption is already marked
+SUCCESS. To repair this old state without replaying outbox messages, run:
+
+```powershell
+python -m scripts.reconcile_investigations
+python -m scripts.reconcile_investigations --apply
+```
+
+The first command is read-only preview; the second creates missing tasks
+only for open LIVE incidents without private scenarios or existing tasks.
+The script keeps incident IDs, confirms no damage, sends no messages, and
+does not reset the private twin. Re-running is idempotent. To limit a specific
+event, pass `--event-id GDACS-WF-1032942`. The new regression test constructs
+an unfamiliar simulated wildfire and proves the recovery works in PostgreSQL.

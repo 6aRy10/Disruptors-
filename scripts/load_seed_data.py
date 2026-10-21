@@ -475,6 +475,77 @@ def load() -> None:
             ),
         )
 
+        # Load additional verified public replay/policy events used by the
+        # non-geospatial exposure engines. Cianjur keeps the richer USGS payload
+        # from historical_event.json above.
+        for r in read_csv("risk_events.csv"):
+            if r["event_id"] == event["event_id"]:
+                continue
+
+            lat = num(r.get("lat"))
+            lon = num(r.get("lon"))
+            raw_context = {
+                "event_id": r["event_id"],
+                "country": r.get("country") or None,
+                "location_label": r.get("location_label") or None,
+                "matching_rule": r.get("matching_rule") or None,
+                "source_fact": r.get("source_fact") or None,
+                "secondary_source_url": r.get("secondary_source_url") or None,
+                "port_unlocode": r.get("port_unlocode") or None,
+                "policy_tag": r.get("policy_tag") or None,
+                "origin_country": r.get("origin_country") or None,
+                "destination_market": r.get("destination_market") or None,
+                "additional_rate": num(r.get("additional_rate")),
+                "applicability_status": r.get("applicability_status") or None,
+            }
+            conn.execute(
+                """
+                INSERT INTO external_events(
+                  event_id,event_type,mode,source,title,
+                  occurred_or_effective_at,current_as_of,geom,raw_json,
+                  provenance_class,source_url
+                ) VALUES (
+                  %s,%s,%s,%s,%s,%s,%s,
+                  CASE
+                    WHEN %s::double precision IS NULL
+                      OR %s::double precision IS NULL
+                    THEN NULL
+                    ELSE ST_SetSRID(
+                      ST_MakePoint(%s::double precision,%s::double precision),
+                      4326
+                    )::geography
+                  END,
+                  %s::jsonb,'VERIFIED_PUBLIC',%s
+                )
+                ON CONFLICT (event_id) DO UPDATE SET
+                  event_type=EXCLUDED.event_type,
+                  mode=EXCLUDED.mode,
+                  source=EXCLUDED.source,
+                  title=EXCLUDED.title,
+                  occurred_or_effective_at=EXCLUDED.occurred_or_effective_at,
+                  current_as_of=EXCLUDED.current_as_of,
+                  geom=EXCLUDED.geom,
+                  raw_json=EXCLUDED.raw_json,
+                  provenance_class=EXCLUDED.provenance_class,
+                  source_url=EXCLUDED.source_url
+                """,
+                (
+                    r["event_id"],
+                    r["event_type"],
+                    r["mode"],
+                    r["source_name"],
+                    r["location_label"],
+                    r["occurred_or_effective_at"],
+                    r["current_as_of"],
+                    lat,
+                    lon,
+                    lon,
+                    lat,
+                    json.dumps(raw_context),
+                    r["source_url"],
+                ),
+            )
+
         for r in read_csv("scenarios.csv"):
             conn.execute(
                 """

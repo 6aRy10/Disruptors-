@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from dependency.db.connection import connect
-from dependency.graph.impact import trace_event_impact
+from dependency.graph.event_impact import trace_business_event_impact
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
@@ -92,7 +92,7 @@ def plan_event_recovery(
     The function evaluates every SKU reached through explicit dependency edges.
     It does not require a caller to choose a product first.
     """
-    impact = trace_event_impact(event_id=event_id, radius_km=radius_km)
+    impact = trace_business_event_impact(event_id=event_id, radius_km=radius_km)
     impacted_skus = [row["sku"] for row in impact.get("products", [])]
 
     products = []

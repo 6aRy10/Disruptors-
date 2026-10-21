@@ -9,7 +9,7 @@ from rapidfuzz.fuzz import token_set_ratio
 
 from dependency.db.connection import connect
 from dependency.graph.exposure import facilities_within_radius
-from dependency.graph.impact import trace_event_impact
+from dependency.graph.event_impact import trace_business_event_impact
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk

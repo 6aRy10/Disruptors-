@@ -9,7 +9,7 @@ from dependency.agents.orchestrator import run_event_autopilot, run_incident_age
 from dependency.memory.service import get_incident_memory, similar_incidents
 from dependency.incidents.triage import triage_event
 from dependency.graph.exposure import facilities_within_radius
-from dependency.graph.impact import trace_event_impact
+from dependency.graph.event_impact import PHYSICAL_EVENT_TYPES, trace_business_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
 from dependency.services.supplier_outreach import (
@@ -248,7 +248,7 @@ def event_exposure(
     with connect() as conn:
         row = conn.execute(
             """
-            SELECT ST_Y(geom::geometry), ST_X(geom::geometry)
+            SELECT event_type,ST_Y(geom::geometry),ST_X(geom::geometry)
             FROM external_events
             WHERE event_id = %s
             """,
@@ -258,16 +258,35 @@ def event_exposure(
     if not row:
         raise HTTPException(status_code=404, detail="Event not found.")
 
-    facilities = facilities_within_radius(
-        latitude=float(row[0]),
-        longitude=float(row[1]),
+    if row[0] in PHYSICAL_EVENT_TYPES and row[1] is not None and row[2] is not None:
+        facilities = facilities_within_radius(
+            latitude=float(row[1]),
+            longitude=float(row[2]),
+            radius_km=radius_km,
+        )
+        return {
+            "event_id": event_id,
+            "event_type": row[0],
+            "radius_km": radius_km,
+            "exposure_basis": "GEOSPATIAL_PROXIMITY",
+            "exposure_status": "POTENTIAL_ONLY",
+            "facilities": facilities,
+        }
+
+    impact = trace_business_event_impact(
+        event_id=event_id,
         radius_km=radius_km,
     )
     return {
         "event_id": event_id,
+        "event_type": row[0],
         "radius_km": radius_km,
-        "exposure_status": "POTENTIAL_ONLY",
-        "facilities": facilities,
+        "exposure_basis": impact.get("exposure_basis"),
+        "exposure_status": impact.get("exposure_status"),
+        "facilities": impact.get("facilities", []),
+        "dependency_paths": impact.get("dependency_paths", []),
+        "products": impact.get("products", []),
+        "totals": impact.get("totals", {}),
     }
 
 
@@ -276,7 +295,7 @@ def event_impact(
     event_id: str,
     radius_km: float = Query(default=100.0, gt=0, le=1000),
 ):
-    return trace_event_impact(event_id=event_id, radius_km=radius_km)
+    return trace_business_event_impact(event_id=event_id, radius_km=radius_km)
 
 
 @app.get("/scenarios/{scenario_id}/recovery/{sku}")

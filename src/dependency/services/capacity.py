@@ -3,6 +3,12 @@ from __future__ import annotations
 from uuid import uuid4
 
 from dependency.db.connection import connect
+from dependency.events.bus import (
+    TOPIC_BUSINESS_STATE,
+    TOPIC_PLAN_INVALIDATED,
+    TOPIC_SUPPLIER_CAPACITY,
+    enqueue_outbox,
+)
 
 
 def confirm_supplier_capacity(
@@ -78,6 +84,51 @@ def confirm_supplier_capacity(
             RETURNING version
             """
         ).fetchone()[0]
+
+        capacity_event = {
+            "observation_id": observation_id,
+            "facility_id": facility_id,
+            "sku": sku,
+            "old_capacity_units": float(old_capacity),
+            "new_capacity_units": int(capacity_units),
+            "committed_units": float(committed_units),
+            "available_capacity_units": max(
+                0.0,
+                float(capacity_units) - float(committed_units),
+            ),
+            "valid_until": valid_until,
+            "state_version": int(new_version),
+            "confirmed": True,
+            "source_channel": source_channel,
+            "provenance_class": "SIMULATED_PRIVATE",
+        }
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_SUPPLIER_CAPACITY,
+            event_key=f"{facility_id}:{sku}",
+            payload=capacity_event,
+        )
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_BUSINESS_STATE,
+            event_key=f"state:{new_version}",
+            payload={
+                "state_version": int(new_version),
+                "change_type": "SUPPLIER_CAPACITY_CONFIRMED",
+                "facility_id": facility_id,
+                "sku": sku,
+            },
+        )
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_PLAN_INVALIDATED,
+            event_key=f"{sku}:{new_version}",
+            payload={
+                "sku": sku,
+                "new_state_version": int(new_version),
+                "reason": "SUPPLIER_CAPACITY_CHANGED",
+            },
+        )
 
         conn.commit()
 

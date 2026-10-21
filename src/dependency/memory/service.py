@@ -4,6 +4,12 @@ import json
 from uuid import uuid4
 
 from dependency.db.connection import connect
+from dependency.events.bus import (
+    TOPIC_DECISION_CONFIRMED,
+    TOPIC_INCIDENT_DETECTED,
+    TOPIC_PLAN_GENERATED,
+    enqueue_outbox,
+)
 
 
 def _id(prefix: str) -> str:
@@ -67,6 +73,19 @@ def ensure_incident(
                 provenance_class,
             ),
         ).fetchone()
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_INCIDENT_DETECTED,
+            event_key=incident_id,
+            payload={
+                "incident_id": incident_id,
+                "event_id": event_id,
+                "scenario_id": scenario_id,
+                "event_type": event[0],
+                "status": "INVESTIGATING",
+                "provenance_class": provenance_class,
+            },
+        )
         conn.commit()
 
     return {
@@ -177,6 +196,20 @@ def save_plan_snapshot(
                 json.dumps(plan.get("evidence", {}), default=str),
             ),
         )
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_PLAN_GENERATED,
+            event_key=plan_record_id,
+            payload={
+                "plan_record_id": plan_record_id,
+                "incident_id": incident_id,
+                "state_version": state_version,
+                "sku": sku,
+                "plan_id": plan.get("plan_id"),
+                "decision": plan.get("decision", "UNKNOWN"),
+                "reasons": plan.get("reasons", []),
+            },
+        )
         conn.commit()
     return {"plan_record_id": plan_record_id, "incident_id": incident_id}
 
@@ -207,6 +240,19 @@ def record_decision(
                 reason,
                 json.dumps(outcome or {}, default=str),
             ),
+        )
+        enqueue_outbox(
+            conn,
+            topic=TOPIC_DECISION_CONFIRMED,
+            event_key=decision_id,
+            payload={
+                "decision_id": decision_id,
+                "incident_id": incident_id,
+                "plan_record_id": plan_record_id,
+                "action": action,
+                "approved_by": approved_by,
+                "reason": reason,
+            },
         )
         conn.commit()
     return {"decision_id": decision_id, "incident_id": incident_id}

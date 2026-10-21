@@ -328,6 +328,20 @@ CREATE TABLE IF NOT EXISTS scenario_facility_state (
   PRIMARY KEY(scenario_id, facility_id)
 );
 
+CREATE TABLE IF NOT EXISTS event_outbox (
+  outbox_id text PRIMARY KEY,
+  topic text NOT NULL,
+  event_key text NOT NULL,
+  payload jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  published_at timestamptz,
+  attempts int NOT NULL DEFAULT 0,
+  last_error text
+);
+CREATE INDEX IF NOT EXISTS event_outbox_pending_idx
+  ON event_outbox(created_at)
+  WHERE published_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS incidents (
   incident_id text PRIMARY KEY,
   event_id text REFERENCES external_events(event_id),

@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 
 from dependency.db.connection import connect
+from dependency.events.bus import TOPIC_EXTERNAL_EVENTS, enqueue_outbox
 
 
 def _parse_occurred_at(event: dict):
@@ -62,6 +63,23 @@ def upsert_external_event(event: dict, *, mode: str = "LIVE") -> dict:
                 json.dumps(event.get("raw_json", event)), source_url,
             ),
         )
+        if not existed:
+            enqueue_outbox(
+                conn,
+                topic=TOPIC_EXTERNAL_EVENTS,
+                event_key=event["event_id"],
+                payload={
+                    "event_id": event["event_id"],
+                    "event_type": event["event_type"],
+                    "source": event["source"],
+                    "mode": mode,
+                    "occurred_at": occurred_at.isoformat() if occurred_at else None,
+                    "latitude": float(event["latitude"]),
+                    "longitude": float(event["longitude"]),
+                    "provenance_class": "VERIFIED_PUBLIC",
+                },
+            )
+
         conn.commit()
 
     return {

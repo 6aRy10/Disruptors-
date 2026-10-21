@@ -62,6 +62,16 @@ def load() -> None:
     with connect() as conn:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
 
+        # Deterministic demo reset for transient incident/event state.
+        conn.execute("DELETE FROM incident_decisions")
+        conn.execute("DELETE FROM incident_plan_history")
+        conn.execute("DELETE FROM incident_evidence")
+        conn.execute("DELETE FROM agent_runs")
+        conn.execute("DELETE FROM incident_outcomes")
+        conn.execute("DELETE FROM incidents")
+        conn.execute("DELETE FROM event_outbox")
+        conn.execute("DELETE FROM external_events WHERE mode = 'LIVE'")
+
         network_rows = read_data_csv("adidas_2026_network_facilities.csv")
 
         # Deterministic reload of the public network.

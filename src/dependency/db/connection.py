@@ -10,9 +10,9 @@ load_dotenv()
 
 
 def database_url() -> str:
-    url = os.getenv("DATABASE_URL") or os.getenv("AIVEN_DATABASE_URL")
+    url = os.getenv("AIVEN_DATABASE_URL") or os.getenv("DATABASE_URL")
     if not url:
-        raise RuntimeError("Set DATABASE_URL (local) or AIVEN_DATABASE_URL (deployment).")
+        raise RuntimeError("Set DATABASE_URL (local) or AIVEN_DATABASE_URL (Aiven deployment).")
     return url
 
 

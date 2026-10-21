@@ -44,6 +44,8 @@ def main() -> int:
         ("purchase_orders.csv", "material_id", materials, "material"),
         ("material_sources.csv", "material_id", materials, "material"),
         ("material_allocations.csv", "material_id", materials, "material"),
+        ("substitutions.csv", "material_id", materials, "material"),
+        ("substitutions.csv", "substitute_material_id", materials, "material"),
         ("scenario_facility_state.csv", "scenario_id", scenarios, "scenario"),
     ]
 

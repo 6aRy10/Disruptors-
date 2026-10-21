@@ -11,6 +11,8 @@ from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.recovery import plan_sku_recovery
+from dependency.solver.candidates import generate_recovery_candidates
+from dependency.graph.shared_dependencies import backup_independence
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -124,6 +126,34 @@ def scenario_recovery(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/scenarios/{scenario_id}/candidates/{sku}")
+def scenario_candidates(scenario_id: str, sku: str):
+    try:
+        return {
+            "scenario_id": scenario_id,
+            "sku": sku,
+            "plans": generate_recovery_candidates(
+                scenario_id=scenario_id,
+                sku=sku,
+            ),
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/products/{sku}/backup-independence")
+def product_backup_independence(
+    sku: str,
+    primary_facility_id: str,
+    backup_facility_id: str,
+):
+    return backup_independence(
+        sku=sku,
+        primary_facility_id=primary_facility_id,
+        backup_facility_id=backup_facility_id,
+    )
 
 
 @app.get("/scenarios/{scenario_id}/risk/{sku}")

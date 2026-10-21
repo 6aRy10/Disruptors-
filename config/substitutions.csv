@@ -1,0 +1,2 @@
+material_id,substitute_material_id,approved,max_ratio,engineering_status,provenance_class,note
+MAT-RUBBER-OUTSOLE,MAT-RUBBER-OUTSOLE-B,False,1.0,PENDING_VALIDATION,SIMULATED_PRIVATE,Deliberately unapproved alternative used to prove deterministic rejection.

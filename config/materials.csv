@@ -19,3 +19,4 @@ MAT-DRAWCORD,Drawcord set,set,Apparel,low,Trefoil Essentials Hoodie public detai
 MAT-POLY-BAG,Polyester backpack shell fabric,meter,Accessories,critical,Originals Daily Backpack is 100% polyester.,PUBLIC_DERIVED
 MAT-WEBBING,Strap and webbing set,set,Accessories,medium,Backpack construction digital twin; exact BOM private.,SIMULATED_PRIVATE
 MAT-PACKAGING,Labels and packaging set,set,Cross-category,low,Standard finished-product logistics input; exact SKU quantity private.,SIMULATED_PRIVATE
+MAT-RUBBER-OUTSOLE-B,Alternate rubber outsole assembly - compound B,pair,Footwear,critical,Private engineering alternative used to test substitution approval.,SIMULATED_PRIVATE\n

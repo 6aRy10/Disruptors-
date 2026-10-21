@@ -251,6 +251,25 @@ def load() -> None:
                 (r["sku"], r["material_id"], num(r["qty_per_unit"]), r["provenance_class"]),
             )
 
+        for r in read_csv("substitutions.csv"):
+            conn.execute(
+                """
+                INSERT INTO substitutions(
+                  material_id,substitute_material_id,approved,max_ratio,
+                  engineering_status,provenance_class
+                ) VALUES (%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (material_id,substitute_material_id) DO UPDATE SET
+                  approved=EXCLUDED.approved,max_ratio=EXCLUDED.max_ratio,
+                  engineering_status=EXCLUDED.engineering_status,
+                  provenance_class=EXCLUDED.provenance_class
+                """,
+                (
+                    r["material_id"], r["substitute_material_id"],
+                    boolean(r["approved"]), num(r["max_ratio"]),
+                    r["engineering_status"], r["provenance_class"],
+                ),
+            )
+
         for r in read_csv("material_sources.csv"):
             conn.execute(
                 """

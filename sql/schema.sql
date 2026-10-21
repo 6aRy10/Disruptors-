@@ -178,6 +178,16 @@ CREATE TABLE IF NOT EXISTS material_allocations (
   PRIMARY KEY(material_id, source_facility_id, destination_facility_id, sku)
 );
 
+CREATE TABLE IF NOT EXISTS substitutions (
+  material_id text REFERENCES materials(material_id),
+  substitute_material_id text REFERENCES materials(material_id),
+  approved boolean NOT NULL DEFAULT false,
+  max_ratio numeric CHECK (max_ratio >= 0 AND max_ratio <= 1),
+  engineering_status text,
+  provenance_class text NOT NULL,
+  PRIMARY KEY(material_id, substitute_material_id)
+);
+
 CREATE TABLE IF NOT EXISTS inventory (
   site_id text,
   item_type text,

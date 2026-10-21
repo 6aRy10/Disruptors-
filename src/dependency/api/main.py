@@ -44,6 +44,8 @@ from dependency.solver.transport_feasibility import evaluate_recovery_transport
 from dependency.solver.portfolio import plan_event_recovery
 from dependency.solver.optimization import optimize_recovery_allocation
 from dependency.graph.shared_dependencies import backup_independence
+from dependency.graph.dependency_view import product_dependency_graph
+from dependency.graph.network import list_network_facilities, network_stats
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -235,6 +237,36 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.get("/network/stats")
+def public_network_stats():
+    return network_stats()
+
+
+@app.get("/network/facilities")
+def public_network_facilities(
+    country: str | None = Query(default=None),
+    list_type: str | None = Query(default=None),
+    business_linked_only: bool = False,
+    limit: int = Query(default=1000, ge=1, le=5000),
+):
+    return {
+        "facilities": list_network_facilities(
+            country=country,
+            list_type=list_type,
+            business_linked_only=business_linked_only,
+            limit=limit,
+        )
+    }
+
+
+@app.get("/products/{sku}/graph")
+def product_graph(sku: str):
+    try:
+        return product_dependency_graph(sku)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/events")

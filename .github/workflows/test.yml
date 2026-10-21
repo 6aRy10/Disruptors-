@@ -158,6 +158,9 @@ jobs:
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
 
+      - name: Test remote write authorization
+        run: python -m unittest tests.test_write_guard -v
+
       - name: Test human approval workflow
         run: python -m unittest tests.test_approvals -v
 

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+from dependency.api.write_guard import require_write_authorization
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
@@ -64,6 +66,19 @@ app = FastAPI(
     version="0.2.0",
     description="Event-to-exposure-to-recovery API backed by PostgreSQL/PostGIS.",
 )
+
+@app.middleware("http")
+async def protect_state_changes(request: Request, call_next):
+    """Gate remote writes; Slack has its own signed webhook verifier."""
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.url.path != "/integrations/slack/events":
+            require_write_authorization(
+                client_host=request.client.host if request.client else "",
+                authorization=request.headers.get("authorization"),
+                configured_token=os.getenv("DEPENDENCY_WRITE_TOKEN"),
+            )
+    return await call_next(request)
+
 
 WEB_ROOT = Path(__file__).resolve().parents[3] / "web"
 

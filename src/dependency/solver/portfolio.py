@@ -8,6 +8,7 @@ from dependency.risk.operational import scenario_product_risk
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
 from dependency.solver.optimization import optimize_recovery_allocation
+from dependency.solver.joint_optimization import optimize_joint_recovery
 
 
 def _commercial_totals(sku: str) -> dict:
@@ -247,6 +248,18 @@ def plan_event_recovery(
     )
 
     shared_resource_conflicts = _shared_backup_conflicts(products)
+    # Use the joint physical-capacity model for multi-product incidents.
+    # Per-SKU optimization remains useful as an individual diagnostic only.
+    joint_allocation = (
+        optimize_joint_recovery(
+            scenario_id=scenario_id,
+            skus=[p["sku"] for p in operational],
+            include_provisional=True,
+            release_safety_stock=False,
+        )
+        if len(operational) > 1
+        else None
+    )
     # Each SKU is optimized independently. Competing backup facility choices
     # are not globally capacity-reserved, so the portfolio must not be marked
     # executable until a shared-resource allocation is validated.
@@ -259,10 +272,14 @@ def plan_event_recovery(
     else:
         portfolio_status = "FEASIBLE"
 
-    shared_capacity_validation_required = bool(shared_resource_conflicts)
+    shared_capacity_validation_required = bool(
+        joint_allocation
+        and joint_allocation["unverified_shared_capacity_facilities"]
+    )
     portfolio_allocation_verified = (
-        len(operational) <= 1
-        and not shared_capacity_validation_required
+        joint_allocation["portfolio_allocation_verified"]
+        if joint_allocation is not None
+        else len(operational) <= 1 and not shared_resource_conflicts
     )
 
     versions = sorted({p["state_version"] for p in products})
@@ -299,13 +316,16 @@ def plan_event_recovery(
         "action_queue": action_queue,
         "rejected_actions": rejected_actions,
         "shared_resource_conflicts": shared_resource_conflicts,
+        "joint_allocation": joint_allocation,
         "shared_capacity_validation_required": shared_capacity_validation_required,
         "portfolio_allocation_verified": portfolio_allocation_verified,
         "portfolio_allocation_claim": (
-            "Independent per-SKU optimization only. Shared-resource limits "
-            "need a joint allocation before this portfolio can be executed."
-            if not portfolio_allocation_verified
-            else "At most one operationally affected SKU; no inter-SKU conflict."
+            "Joint recovery uses one shared physical-capacity cap per backup. "
+            "The cap still needs facility-wide confirmation before execution."
+            if joint_allocation is not None and not portfolio_allocation_verified
+            else "Joint allocation respects explicit physical-capacity limits."
+            if joint_allocation is not None
+            else "Single operationally affected SKU; no inter-SKU capacity conflict."
         ),
         "ranking_rule": (
             "shortage first; feasible before conditional; then higher risk, "

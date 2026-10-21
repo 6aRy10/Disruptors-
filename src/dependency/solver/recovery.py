@@ -11,7 +11,7 @@ def plan_sku_recovery(
     scenario_id: str,
     sku: str,
     stale_after_hours: float = 48.0,
-    release_safety_stock: bool = True,
+    release_safety_stock: bool = False,
 ) -> dict:
     with connect() as conn:
         scenario = conn.execute(
@@ -56,9 +56,11 @@ def plan_sku_recovery(
         reserved = float(inv[1])
         safety_stock = float(inv[2])
         inventory_without_safety = max(0.0, on_hand - reserved - safety_stock)
-        usable_inventory = max(0.0, on_hand - reserved)
-        if not release_safety_stock:
-            usable_inventory = inventory_without_safety
+        usable_inventory = (
+            max(0.0, on_hand - reserved)
+            if release_safety_stock
+            else inventory_without_safety
+        )
 
         state_rows = conn.execute(
             """
@@ -95,7 +97,15 @@ def plan_sku_recovery(
         current_facility_ids = set()
         for row in current_prod_rows:
             current_facility_ids.add(row[1])
-            state = scenario_state.get(row[1], {"status": "AVAILABLE", "capacity_multiplier": 1.0, "confirmed": False, "reason": None})
+            state = scenario_state.get(
+                row[1],
+                {
+                    "status": "AVAILABLE",
+                    "capacity_multiplier": 1.0,
+                    "confirmed": False,
+                    "reason": None,
+                },
+            )
             qty = float(row[3])
             if state["status"] == "UNAVAILABLE":
                 available_qty = 0.0
@@ -154,9 +164,15 @@ def plan_sku_recovery(
             facility_id = row[0]
             if facility_id in current_facility_ids:
                 continue
+
             state = scenario_state.get(
                 facility_id,
-                {"status": "AVAILABLE", "capacity_multiplier": 1.0, "confirmed": False, "reason": None},
+                {
+                    "status": "AVAILABLE",
+                    "capacity_multiplier": 1.0,
+                    "confirmed": False,
+                    "reason": None,
+                },
             )
             if state["status"] == "UNAVAILABLE":
                 available_capacity = 0.0
@@ -168,28 +184,31 @@ def plan_sku_recovery(
             ready_date = as_of + timedelta(days=setup_days)
             due_feasible = ready_date <= earliest_due
             stale = float(row[6] or 0) > stale_after_hours
-            candidate = {
-                "facility_id": facility_id,
-                "facility_name": row[1],
-                "role": row[2],
-                "setup_lead_days": setup_days,
-                "ready_date": ready_date.isoformat(),
-                "earliest_due_date": earliest_due.isoformat(),
-                "capacity_units": float(row[4]),
-                "committed_units": float(row[5]),
-                "available_capacity_units": available_capacity,
-                "evidence_age_hours": float(row[6] or 0),
-                "capacity_status": row[7],
-                "scenario_status": state["status"],
-                "status_confirmed": state["confirmed"],
-                "due_feasible": due_feasible,
-                "requires_supplier_confirmation": stale,
-                "provenance_class": row[8],
-            }
-            candidates.append(candidate)
+
+            candidates.append(
+                {
+                    "facility_id": facility_id,
+                    "facility_name": row[1],
+                    "role": row[2],
+                    "setup_lead_days": setup_days,
+                    "ready_date": ready_date.isoformat(),
+                    "earliest_due_date": earliest_due.isoformat(),
+                    "capacity_units": float(row[4]),
+                    "committed_units": float(row[5]),
+                    "available_capacity_units": available_capacity,
+                    "evidence_age_hours": float(row[6] or 0),
+                    "capacity_status": row[7],
+                    "scenario_status": state["status"],
+                    "status_confirmed": state["confirmed"],
+                    "due_feasible": due_feasible,
+                    "requires_supplier_confirmation": stale,
+                    "provenance_class": row[8],
+                }
+            )
 
         viable = [
-            c for c in candidates
+            c
+            for c in candidates
             if c["scenario_status"] != "UNAVAILABLE"
             and c["due_feasible"]
             and c["available_capacity_units"] > 0
@@ -213,11 +232,16 @@ def plan_sku_recovery(
 
         inventory_needed = max(
             0.0,
-            min(usable_inventory, float(demand_units) - available_current_production - backup_units),
+            min(
+                usable_inventory,
+                float(demand_units) - available_current_production - backup_units,
+            ),
         )
-        safety_stock_used = 0.0
-        if release_safety_stock:
-            safety_stock_used = max(0.0, inventory_needed - inventory_without_safety)
+        safety_stock_used = (
+            max(0.0, inventory_needed - inventory_without_safety)
+            if release_safety_stock
+            else 0.0
+        )
 
         orders = [
             Order(
@@ -232,13 +256,21 @@ def plan_sku_recovery(
         ]
         allocation = summarize(allocate_orders(orders, int(fulfillable_units)))
 
-        requires_confirmation = bool(selected and selected["requires_supplier_confirmation"])
+        requires_confirmation = bool(
+            selected and selected["requires_supplier_confirmation"]
+        )
+        requires_planner_approval = safety_stock_used > 0
+
         if shortage_units > 0 and requires_confirmation:
             plan_status = "PROVISIONAL_SHORTAGE"
         elif shortage_units > 0:
             plan_status = "SHORTAGE"
+        elif requires_confirmation and requires_planner_approval:
+            plan_status = "PROVISIONAL_REQUIRES_CONFIRMATION_AND_APPROVAL"
         elif requires_confirmation:
             plan_status = "PROVISIONAL_AWAITING_CONFIRMATION"
+        elif requires_planner_approval:
+            plan_status = "FEASIBLE_REQUIRES_APPROVAL"
         else:
             plan_status = "FEASIBLE"
 
@@ -266,5 +298,6 @@ def plan_sku_recovery(
             "total_available_units": total_available,
             "shortage_units": shortage_units,
             "requires_supplier_confirmation": requires_confirmation,
+            "requires_planner_approval": requires_planner_approval,
             "allocation": allocation,
         }

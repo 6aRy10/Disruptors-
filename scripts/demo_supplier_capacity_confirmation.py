@@ -47,15 +47,23 @@ update = confirm_supplier_capacity(
 print("\nCONFIRMED DATABASE UPDATE")
 print(json.dumps(update, indent=2))
 
-plan = plan_sku_recovery(scenario_id=SCENARIO_ID, sku=SKU)
-print("\nREPLANNED")
+plan = plan_sku_recovery(
+    scenario_id=SCENARIO_ID,
+    sku=SKU,
+    release_safety_stock=True,
+)
+
+print("\nREPLANNED - BEST EMERGENCY CASE")
+print("(This case explicitly releases safety stock.)")
 print(json.dumps({
     "state_version": plan["state_version"],
     "plan_status": plan["plan_status"],
     "backup_available_units": plan["backup_available_units"],
+    "safety_stock_used_units": plan["inventory"]["safety_stock_used_units"],
     "total_available_units": plan["total_available_units"],
     "shortage_units": plan["shortage_units"],
     "requires_supplier_confirmation": plan["requires_supplier_confirmation"],
+    "requires_planner_approval": plan["requires_planner_approval"],
     "protected_revenue_eur": plan["allocation"]["protected_revenue_eur"],
     "protected_margin_eur": plan["allocation"]["protected_margin_eur"],
 }, indent=2))

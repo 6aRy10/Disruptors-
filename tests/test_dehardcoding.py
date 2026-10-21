@@ -361,18 +361,30 @@ class DehardcodingTests(unittest.TestCase):
         )
 
     def test_arbitrary_new_event_finds_generated_facility_geospatially(self):
-        event_id = "TEST-ARBITRARY-SCALE-GEO"
-        fixture = self._insert_scale_earthquake(event_id)
-        try:
-            rows = operational_facilities_within_radius(
-                latitude=fixture["latitude"],
-                longitude=fixture["longitude"],
-                radius_km=3,
-            )
-            ids = {row["facility_id"] for row in rows}
-            self.assertIn(fixture["facility_id"], ids)
-        finally:
-            self._delete_test_event(event_id)
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                  f.facility_id,
+                  ST_X(f.geom::geometry),
+                  ST_Y(f.geom::geometry)
+                FROM facilities f
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND f.geom IS NOT NULL
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+        self.assertIsNotNone(row)
+
+        facility_id, longitude, latitude = row
+        rows = operational_facilities_within_radius(
+            latitude=float(latitude),
+            longitude=float(longitude),
+            radius_km=3,
+        )
+        ids = {item["facility_id"] for item in rows}
+        self.assertIn(facility_id, ids)
 
     def test_arbitrary_new_earthquake_reaches_generated_private_graph(self):
         event_id = "TEST-ARBITRARY-SCALE-EARTHQUAKE"

@@ -1,7 +1,7 @@
 """Check Hermes map reads the seeded PostgreSQL/PostGIS graph."""
 import unittest
 from dependency.db.connection import connect
-from dependency.graph.app_views import map_facilities,facility_profile
+from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox,event_context
 
 
 class AppDataDatabaseTests(unittest.TestCase):
@@ -31,6 +31,22 @@ class AppDataDatabaseTests(unittest.TestCase):
         self.assertEqual(result["commercial_exposure_status"],"POTENTIAL_NOT_CONFIRMED_LOSS")
         self.assertTrue(all(p["provenance_class"]=="SIMULATED_PRIVATE"
                             for p in result["connected_products"]))
+
+
+    def test_seeded_event_has_a_public_source_and_usable_context(self):
+        with connect() as conn:
+            evt=conn.execute(
+                "SELECT event_id FROM external_events ORDER BY event_id LIMIT 1"
+            ).fetchone()
+        self.assertIsNotNone(evt)
+        result=event_context(event_id=evt[0])
+        self.assertEqual(result["event"]["event_id"],evt[0])
+        self.assertIn(result["event"]["provenance_class"],{
+            "VERIFIED_PUBLIC","PUBLIC_DERIVED","SIMULATED_PRIVATE","INFERRED",
+        })
+        self.assertIn("not confirmed",result["claim_rule"])
+        inbox=incident_inbox()
+        self.assertIsInstance(inbox["incidents"],list)
 
 
 if __name__=="__main__":

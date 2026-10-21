@@ -191,6 +191,9 @@ jobs:
       - name: Rehearsal checkpoint - supplier capacity confirmation
         run: python scripts/rehearse_control_loop.py --stop-after-stage 4
 
+      - name: Rehearsal checkpoint - post-confirmation replanning
+        run: python scripts/rehearse_control_loop.py --stop-after-stage 5
+
       - name: Rehearsal checkpoint - approval and execution
         run: python scripts/rehearse_control_loop.py --stop-after-stage 6
 

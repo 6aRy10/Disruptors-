@@ -90,11 +90,15 @@ def main() -> None:
     )
     parser.add_argument("--safety-stock-site", default="WH-EU")
     parser.add_argument("--safety-stock-units", type=float, default=500.0)
+    parser.add_argument("--stop-after-stage", type=int, choices=range(0, 9), default=8)
     args = parser.parse_args()
 
     heading(0, "RESET")
     reset = reset_demo_state()
     print(json.dumps(reset, indent=2))
+
+    if args.stop_after_stage == 0:
+        return
 
     heading(1, "REAL EVENT -> PUBLIC NETWORK -> PRIVATE BUSINESS GRAPH")
     triage = triage_event(
@@ -132,6 +136,9 @@ def main() -> None:
         )
     )
 
+    if args.stop_after_stage == 1:
+        return
+
     heading(2, "INITIAL PORTFOLIO + DETERMINISTIC REJECTIONS")
     initial = plan_event_recovery(
         event_id=args.event_id,
@@ -155,6 +162,9 @@ def main() -> None:
             default=str,
         )
     )
+
+    if args.stop_after_stage == 2:
+        return
 
     heading(3, "RECOVERY PLANNER REQUESTS FRESH SUPPLIER EVIDENCE")
     request = create_capacity_confirmation_request(
@@ -182,6 +192,9 @@ def main() -> None:
         )
     )
 
+    if args.stop_after_stage == 3:
+        return
+
     heading(4, "SUPPLIER REPLY -> PARSE -> EXPLICIT CONFIRMATION")
     reply = record_confirmation_reply(
         request_id=request["request_id"],
@@ -201,6 +214,9 @@ def main() -> None:
     print(json.dumps(confirmed, indent=2, default=str))
 
     process_pending_events(limit=500)
+
+    if args.stop_after_stage == 4:
+        return
 
     heading(5, "STATE VERSION 2 -> AUTOMATIC REPLAN")
     after_capacity = plan_event_recovery(
@@ -227,6 +243,9 @@ def main() -> None:
             indent=2,
         ),
     )
+
+    if args.stop_after_stage == 5:
+        return
 
     heading(6, "HUMAN APPROVAL -> EXECUTE HIGH-IMPACT ACTION")
     approval = request_human_approval(
@@ -280,6 +299,9 @@ def main() -> None:
         )
     )
 
+    if args.stop_after_stage == 6:
+        return
+
     heading(7, "FINAL STATE VERSION -> CUSTOMER / MARGIN RESULT")
     final = plan_event_recovery(
         event_id=args.event_id,
@@ -298,6 +320,9 @@ def main() -> None:
             default=str,
         )
     )
+
+    if args.stop_after_stage == 7:
+        return
 
     heading(8, "OPERATIONAL MEMORY")
     memory = get_incident_memory(incident_id)

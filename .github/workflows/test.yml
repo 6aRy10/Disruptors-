@@ -185,5 +185,14 @@ jobs:
       - name: Test recovery optimization
         run: python -m unittest tests.test_optimization -v
 
+      - name: Rehearsal checkpoint - exposure and recovery
+        run: python scripts/rehearse_control_loop.py --stop-after-stage 2
+
+      - name: Rehearsal checkpoint - supplier capacity confirmation
+        run: python scripts/rehearse_control_loop.py --stop-after-stage 4
+
+      - name: Rehearsal checkpoint - approval and execution
+        run: python scripts/rehearse_control_loop.py --stop-after-stage 6
+
       - name: Rehearse full Cianjur control loop
         run: python scripts/rehearse_control_loop.py

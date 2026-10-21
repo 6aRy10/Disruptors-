@@ -22,25 +22,34 @@ def report() -> dict:
             identity = conn.execute("SELECT current_database(),inet_server_addr()::text").fetchone()
             result["database"]["connected_name"] = identity[0]
             result["database"]["server_address"] = identity[1]
-            exists = conn.execute("SELECT to_regclass('public.products')").fetchone()[0]
-            if not exists:
-                result["status"] = "SCHEMA_NOT_LOADED"
+            queries = {
+                "public_facilities": ("network_facilities", "SELECT count(*) FROM network_facilities"),
+                "generated_products": ("products", "SELECT count(*) FROM products WHERE sku LIKE 'DTSKU-%'"),
+                "bom_rows": ("bom", "SELECT count(*) FROM bom"),
+                "material_allocations": ("material_allocations", "SELECT count(*) FROM material_allocations"),
+                "commitments": ("fulfilment_commitments", "SELECT count(*) FROM fulfilment_commitments"),
+            }
+            missing = [
+                table for table, _ in queries.values()
+                if conn.execute("SELECT to_regclass(%s)", (f"public.{table}",)).fetchone()[0] is None
+            ]
+            result["database"]["missing_tables"] = missing
+            if missing:
+                result["status"] = "SCHEMA_INCOMPLETE"
+                result["next_step"] = "On a disposable development database, run python scripts/load_seed_data.py"
             else:
-                for name, query in {
-                    "public_facilities": "SELECT count(*) FROM network_facilities",
-                    "generated_products": "SELECT count(*) FROM products WHERE sku LIKE 'DTSKU-%'",
-                    "bom_rows": "SELECT count(*) FROM bom",
-                    "material_allocations": "SELECT count(*) FROM material_allocations",
-                    "commitments": "SELECT count(*) FROM fulfilment_commitments",
-                }.items():
-                    result["data"][name] = int(conn.execute(query).fetchone()[0])
+                for label, (_, query) in queries.items():
+                    result["data"][label] = int(conn.execute(query).fetchone()[0])
                 result["status"] = (
                     "DATA_LOADED"
                     if result["data"]["generated_products"] >= 2500
+                    and result["data"]["public_facilities"] >= 770
+                    and result["data"]["material_allocations"] >= 170010
                     else "DATA_INCOMPLETE"
                 )
+                if result["status"] == "DATA_INCOMPLETE":
+                    result["next_step"] = "On a disposable development database, run python scripts/load_seed_data.py"
     except Exception as exc:
-        result["database_error"] = f"{type(exc).__name__}: {exc}"
         # Some drivers embed credentials in exceptions; never print exception text.
         result["database_error"] = type(exc).__name__
 
@@ -55,7 +64,7 @@ def report() -> dict:
             result["feeds"][name] = {
                 "reachable": True,
                 "feature_count": len(payload.get("features", [])),
-                "connected_to_background_worker": False,
+                "background_worker_status": "NOT_CHECKED",
             }
         except Exception as exc:
             result["feeds"][name] = {"reachable": False, "error_type": type(exc).__name__}

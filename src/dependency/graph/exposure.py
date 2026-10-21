@@ -14,13 +14,10 @@ def facilities_within_radius(*, latitude: float, longitude: float, radius_km: fl
             tier,
             product_categories,
             parent_organization,
-            ROUND(
-                ST_Distance(
-                    geom,
-                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
-                ) / 1000.0,
-                1
-            ) AS distance_km,
+            ST_Distance(
+                geom,
+                ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography
+            ) / 1000.0 AS distance_km,
             provenance_class,
             source_url
         FROM facilities
@@ -36,19 +33,19 @@ def facilities_within_radius(*, latitude: float, longitude: float, radius_km: fl
     params = (longitude, latitude, longitude, latitude, radius_m)
     with connect() as conn:
         rows = conn.execute(sql, params).fetchall()
-        cols = [d.name for d in conn.execute(sql + " LIMIT 0", params).description] if False else None
-        return [
-            {
-                "facility_id": r[0],
-                "name": r[1],
-                "country": r[2],
-                "city": r[3],
-                "tier": r[4],
-                "product_categories": r[5],
-                "parent_organization": r[6],
-                "distance_km": float(r[7]),
-                "provenance_class": r[8],
-                "source_url": r[9],
-            }
-            for r in rows
-        ]
+
+    return [
+        {
+            "facility_id": r[0],
+            "name": r[1],
+            "country": r[2],
+            "city": r[3],
+            "tier": r[4],
+            "product_categories": r[5],
+            "parent_organization": r[6],
+            "distance_km": round(float(r[7]), 1),
+            "provenance_class": r[8],
+            "source_url": r[9],
+        }
+        for r in rows
+    ]

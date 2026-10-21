@@ -196,11 +196,11 @@ def normalize_company(name: str, country: str | None = None, limit: int = 5) -> 
         ).fetchall()
 
     scored = []
-    query = str(name or "").strip()
+    query = str(name or "").strip().lower()
     for row in rows:
         candidate_text = " ".join(
             x for x in [row[2], row[3], row[6]] if x
-        )
+        ).lower()
         score = float(token_set_ratio(query, candidate_text))
         scored.append(
             {

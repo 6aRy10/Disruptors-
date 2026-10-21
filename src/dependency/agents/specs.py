@@ -31,11 +31,14 @@ SIGNAL_INVESTIGATOR = AgentSpec(
     tool_names=(
         "get_event",
         "find_facilities_near_event",
+        "search_event_evidence",
+        "normalize_company",
     ),
     instructions=COMMON_GUARDRAILS
     + """
 Your job:
-- Inspect the event.
+- Inspect the event and its stored evidence.
+- Resolve uncertain company/facility names against the public network when needed.
 - Find supply-network nodes near it.
 - Mark them POTENTIALLY_EXPOSED only.
 - Distinguish public event evidence from private operational state.
@@ -56,6 +59,9 @@ IMPACT_INVESTIGATOR = AgentSpec(
     role="Trace confirmed or potential exposure through the explicit company graph.",
     tool_names=(
         "trace_downstream_impact",
+        "trace_upstream_dependencies",
+        "explode_bom",
+        "get_inventory",
         "get_customer_commitments",
         "check_backup_independence",
         "get_open_purchase_orders",
@@ -64,6 +70,8 @@ IMPACT_INVESTIGATOR = AgentSpec(
     + """
 Your job:
 - Follow only explicit graph edges.
+- Trace upstream source paths and downstream commercial impact.
+- Explode the BOM for affected quantities and inspect current inventory.
 - Trace affected facilities/materials into SKUs and customer commitments.
 - Check hidden shared dependencies where a nominal backup is relevant.
 - Check purchase-order timing when material availability is relevant.
@@ -84,6 +92,9 @@ RECOVERY_PLANNER = AgentSpec(
         "get_supplier_capacity",
         "get_product_risk",
         "get_event_portfolio",
+        "get_approved_alternatives",
+        "get_transport_options",
+        "find_similar_incidents",
         "check_backup_independence",
     ),
     instructions=COMMON_GUARDRAILS
@@ -95,6 +106,8 @@ Your job:
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.
+- Check approved material/source alternatives and transport lanes before recommending a move.
+- Use similar incidents only as hypotheses; recheck current capacity, inventory, and timing.
 - Prefer protecting priority commitments and margin only within the deterministic policy.
 - Never override engineering approval, supplier confirmation, or solver rejection.
 

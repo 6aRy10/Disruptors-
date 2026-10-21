@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from rapidfuzz.fuzz import token_set_ratio
+
 from dependency.db.connection import connect
 from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.graph.shared_dependencies import backup_independence
+from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.material_timing import purchase_order_supply_by_date
@@ -131,10 +134,377 @@ def get_open_purchase_orders(material_id: str, need_by: str) -> dict:
     )
 
 
+
+def search_event_evidence(event_id: str) -> dict:
+    event = get_event(event_id)
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+              i.incident_id,i.status,e.evidence_id,e.evidence_type,e.source_name,
+              e.source_url,e.fact_json,e.confidence,e.observed_at,e.provenance_class
+            FROM incidents i
+            LEFT JOIN incident_evidence e ON e.incident_id=i.incident_id
+            WHERE i.event_id=%s
+            ORDER BY i.detected_at,e.observed_at,e.evidence_id
+            """,
+            (event_id,),
+        ).fetchall()
+
+    evidence = [
+        {
+            "incident_id": r[0],
+            "incident_status": r[1],
+            "evidence_id": r[2],
+            "evidence_type": r[3],
+            "source_name": r[4],
+            "source_url": r[5],
+            "fact": r[6],
+            "confidence": float(r[7]) if r[7] is not None else None,
+            "observed_at": r[8].isoformat() if r[8] else None,
+            "provenance_class": r[9],
+        }
+        for r in rows
+        if r[2] is not None
+    ]
+    return {
+        "event": event,
+        "stored_evidence": evidence,
+        "evidence_count": len(evidence),
+        "rule": (
+            "Stored evidence can support current claims only at its stated provenance "
+            "and confidence. Public proximity alone is not proof of shutdown."
+        ),
+    }
+
+
+def normalize_company(name: str, country: str | None = None, limit: int = 5) -> dict:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+              network_facility_id,os_id,name,official_name,country,city,
+              parent_organizations,source_url,osh_url,official_provenance
+            FROM network_facilities
+            WHERE (%s IS NULL OR lower(country)=lower(%s))
+            ORDER BY network_facility_id
+            """,
+            (country, country),
+        ).fetchall()
+
+    scored = []
+    query = str(name or "").strip()
+    for row in rows:
+        candidate_text = " ".join(
+            x for x in [row[2], row[3], row[6]] if x
+        )
+        score = float(token_set_ratio(query, candidate_text))
+        scored.append(
+            {
+                "network_facility_id": row[0],
+                "os_id": row[1],
+                "name": row[2],
+                "official_name": row[3],
+                "country": row[4],
+                "city": row[5],
+                "parent_organizations": row[6],
+                "source_url": row[7],
+                "osh_url": row[8],
+                "provenance_class": row[9],
+                "match_score": round(score, 1),
+            }
+        )
+    scored.sort(key=lambda x: (-x["match_score"], x["network_facility_id"]))
+    return {
+        "query": name,
+        "country": country,
+        "matches": scored[: max(1, min(int(limit), 20))],
+        "rule": "Candidate entity matches require human or deterministic confirmation before new dependency edges are created.",
+    }
+
+
+def trace_upstream_dependencies(
+    sku: str,
+    destination_facility_id: str | None = None,
+) -> dict:
+    with connect() as conn:
+        bom_rows = conn.execute(
+            """
+            SELECT b.material_id,m.name,m.criticality,b.qty_per_unit,b.provenance_class
+            FROM bom b
+            JOIN materials m ON m.material_id=b.material_id
+            WHERE b.sku=%s
+            ORDER BY b.material_id
+            """,
+            (sku,),
+        ).fetchall()
+
+        if destination_facility_id:
+            allocation_rows = conn.execute(
+                """
+                SELECT
+                  ma.material_id,ma.source_facility_id,sf.name,
+                  ma.destination_facility_id,df.name,ma.allocation_share,
+                  ma.provenance_class
+                FROM material_allocations ma
+                JOIN facilities sf ON sf.facility_id=ma.source_facility_id
+                JOIN facilities df ON df.facility_id=ma.destination_facility_id
+                WHERE ma.sku=%s
+                  AND ma.destination_facility_id=%s
+                  AND ma.approved=true
+                ORDER BY ma.material_id,ma.source_facility_id
+                """,
+                (sku, destination_facility_id),
+            ).fetchall()
+        else:
+            allocation_rows = conn.execute(
+                """
+                SELECT
+                  ma.material_id,ma.source_facility_id,sf.name,
+                  ma.destination_facility_id,df.name,ma.allocation_share,
+                  ma.provenance_class
+                FROM material_allocations ma
+                JOIN facilities sf ON sf.facility_id=ma.source_facility_id
+                JOIN facilities df ON df.facility_id=ma.destination_facility_id
+                WHERE ma.sku=%s
+                  AND ma.approved=true
+                ORDER BY ma.destination_facility_id,ma.material_id,ma.source_facility_id
+                """,
+                (sku,),
+            ).fetchall()
+
+        source_rows = conn.execute(
+            """
+            SELECT
+              ms.material_id,ms.facility_id,f.name,ms.role,ms.lead_time_days,
+              ms.weekly_capacity_units,ms.provenance_class
+            FROM material_sources ms
+            JOIN facilities f ON f.facility_id=ms.facility_id
+            WHERE ms.approved=true
+              AND ms.material_id IN (
+                SELECT material_id FROM bom WHERE sku=%s
+              )
+            ORDER BY ms.material_id,ms.facility_id
+            """,
+            (sku,),
+        ).fetchall()
+
+    return {
+        "sku": sku,
+        "destination_facility_id": destination_facility_id,
+        "bom": [
+            {
+                "material_id": r[0],
+                "material_name": r[1],
+                "criticality": r[2],
+                "qty_per_unit": float(r[3]),
+                "provenance_class": r[4],
+            }
+            for r in bom_rows
+        ],
+        "allocated_paths": [
+            {
+                "material_id": r[0],
+                "source_facility_id": r[1],
+                "source_facility_name": r[2],
+                "destination_facility_id": r[3],
+                "destination_facility_name": r[4],
+                "allocation_share": float(r[5] or 0),
+                "provenance_class": r[6],
+            }
+            for r in allocation_rows
+        ],
+        "approved_source_catalog": [
+            {
+                "material_id": r[0],
+                "facility_id": r[1],
+                "facility_name": r[2],
+                "role": r[3],
+                "lead_time_days": int(r[4] or 0),
+                "weekly_capacity_units": float(r[5] or 0),
+                "provenance_class": r[6],
+            }
+            for r in source_rows
+        ],
+    }
+
+
+def explode_bom(sku: str, units: float = 1.0) -> dict:
+    if units < 0:
+        raise ValueError("units must be >= 0")
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT b.material_id,m.name,m.uom,m.criticality,b.qty_per_unit,b.provenance_class
+            FROM bom b
+            JOIN materials m ON m.material_id=b.material_id
+            WHERE b.sku=%s
+            ORDER BY b.material_id
+            """,
+            (sku,),
+        ).fetchall()
+    if not rows:
+        raise ValueError(f"No BOM for sku={sku}")
+    return {
+        "sku": sku,
+        "units": float(units),
+        "requirements": [
+            {
+                "material_id": r[0],
+                "material_name": r[1],
+                "uom": r[2],
+                "criticality": r[3],
+                "qty_per_unit": float(r[4]),
+                "required_qty": round(float(r[4]) * float(units), 4),
+                "provenance_class": r[5],
+            }
+            for r in rows
+        ],
+    }
+
+
+def get_inventory(item_id: str, item_type: str = "finished_good") -> dict:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT site_id,qty_on_hand,qty_reserved,safety_stock,updated_at,provenance_class
+            FROM inventory
+            WHERE item_type=%s AND item_id=%s
+            ORDER BY site_id
+            """,
+            (item_type, item_id),
+        ).fetchall()
+    return {
+        "item_id": item_id,
+        "item_type": item_type,
+        "sites": [
+            {
+                "site_id": r[0],
+                "qty_on_hand": float(r[1]),
+                "qty_reserved": float(r[2]),
+                "safety_stock": float(r[3]),
+                "usable_without_safety_stock": max(
+                    0.0,
+                    float(r[1]) - float(r[2]) - float(r[3]),
+                ),
+                "updated_at": r[4].isoformat() if r[4] else None,
+                "provenance_class": r[5],
+            }
+            for r in rows
+        ],
+    }
+
+
+def get_approved_alternatives(material_id: str) -> dict:
+    with connect() as conn:
+        substitutions = conn.execute(
+            """
+            SELECT
+              s.substitute_material_id,m.name,s.max_ratio,s.engineering_status,
+              s.provenance_class
+            FROM substitutions s
+            JOIN materials m ON m.material_id=s.substitute_material_id
+            WHERE s.material_id=%s AND s.approved=true
+            ORDER BY s.substitute_material_id
+            """,
+            (material_id,),
+        ).fetchall()
+        sources = conn.execute(
+            """
+            SELECT
+              ms.facility_id,f.name,ms.role,ms.lead_time_days,
+              ms.weekly_capacity_units,ms.provenance_class
+            FROM material_sources ms
+            JOIN facilities f ON f.facility_id=ms.facility_id
+            WHERE ms.material_id=%s AND ms.approved=true
+            ORDER BY
+              CASE WHEN ms.role='primary' THEN 1 ELSE 0 END,
+              ms.lead_time_days,ms.facility_id
+            """,
+            (material_id,),
+        ).fetchall()
+    return {
+        "material_id": material_id,
+        "approved_substitutions": [
+            {
+                "substitute_material_id": r[0],
+                "name": r[1],
+                "max_ratio": float(r[2] or 0),
+                "engineering_status": r[3],
+                "provenance_class": r[4],
+            }
+            for r in substitutions
+        ],
+        "approved_sources": [
+            {
+                "facility_id": r[0],
+                "facility_name": r[1],
+                "role": r[2],
+                "lead_time_days": int(r[3] or 0),
+                "weekly_capacity_units": float(r[4] or 0),
+                "provenance_class": r[5],
+            }
+            for r in sources
+        ],
+    }
+
+
+def get_transport_options(
+    origin_facility_id: str,
+    destination_market: str,
+) -> dict:
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+              lane_id,port_unlocode,port_name,mode,transit_days,
+              cost_eur_per_unit,status,policy_tag,provenance_class
+            FROM transport_lanes
+            WHERE origin_facility_id=%s
+              AND lower(destination_market)=lower(%s)
+            ORDER BY transit_days,cost_eur_per_unit,lane_id
+            """,
+            (origin_facility_id, destination_market),
+        ).fetchall()
+    return {
+        "origin_facility_id": origin_facility_id,
+        "destination_market": destination_market,
+        "options": [
+            {
+                "lane_id": r[0],
+                "port_unlocode": r[1],
+                "port_name": r[2],
+                "mode": r[3],
+                "transit_days": int(r[4] or 0),
+                "cost_eur_per_unit": float(r[5] or 0),
+                "status": r[6],
+                "policy_tag": r[7],
+                "provenance_class": r[8],
+            }
+            for r in rows
+        ],
+    }
+
+
+def find_similar_incidents(event_type: str, limit: int = 5) -> dict:
+    return {
+        "event_type": event_type,
+        "usage_rule": "HYPOTHESIS_ONLY_RECHECK_CURRENT_STATE",
+        "incidents": similar_incidents(event_type=event_type, limit=limit),
+    }
+
 def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
     tools = {
         "get_event": lambda: get_event(**args),
         "find_facilities_near_event": lambda: find_facilities_near_event(**args),
+        "search_event_evidence": lambda: search_event_evidence(**args),
+        "normalize_company": lambda: normalize_company(**args),
+        "trace_upstream_dependencies": lambda: trace_upstream_dependencies(**args),
+        "explode_bom": lambda: explode_bom(**args),
+        "get_inventory": lambda: get_inventory(**args),
+        "get_approved_alternatives": lambda: get_approved_alternatives(**args),
+        "get_transport_options": lambda: get_transport_options(**args),
+        "find_similar_incidents": lambda: find_similar_incidents(**args),
         "trace_downstream_impact": lambda: trace_event_impact(**args),
         "get_customer_commitments": lambda: get_customer_commitments(**args),
         "get_supplier_capacity": lambda: get_supplier_capacity(**args),
@@ -175,6 +545,121 @@ TOOL_SCHEMAS = [
                 "radius_km": {"type": "number"},
             },
             "required": ["event_id", "radius_km"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "search_event_evidence",
+        "description": "Return stored evidence and provenance for an external event. This does not invent corroboration.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {"event_id": {"type": "string"}},
+            "required": ["event_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "normalize_company",
+        "description": "Resolve a company or facility name against the public supply network and return ranked candidate matches.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "country": {"type": ["string", "null"]},
+                "limit": {"type": "integer"},
+            },
+            "required": ["name", "country", "limit"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "trace_upstream_dependencies",
+        "description": "Return the SKU BOM, explicit source-to-assembly allocations, and approved source catalog.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sku": {"type": "string"},
+                "destination_facility_id": {"type": ["string", "null"]},
+            },
+            "required": ["sku", "destination_facility_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "explode_bom",
+        "description": "Calculate exact material requirements for a SKU quantity from the stored BOM.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "sku": {"type": "string"},
+                "units": {"type": "number"},
+            },
+            "required": ["sku", "units"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_inventory",
+        "description": "Return on-hand, reserved, safety-stock, and usable inventory by site.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "string"},
+                "item_type": {"type": "string"},
+            },
+            "required": ["item_id", "item_type"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_approved_alternatives",
+        "description": "Return approved material substitutions and approved supplier-source alternatives.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {"material_id": {"type": "string"}},
+            "required": ["material_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_transport_options",
+        "description": "Return modeled transport lanes from one facility to a destination market, including transit time, cost, and status.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "origin_facility_id": {"type": "string"},
+                "destination_market": {"type": "string"},
+            },
+            "required": ["origin_facility_id", "destination_market"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "find_similar_incidents",
+        "description": "Retrieve closed same-type incidents as hypotheses only. Current state must always be rechecked.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "event_type": {"type": "string"},
+                "limit": {"type": "integer"},
+            },
+            "required": ["event_type", "limit"],
             "additionalProperties": False,
         },
     },

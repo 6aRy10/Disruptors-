@@ -233,6 +233,9 @@ jobs:
       - name: Test live-event graph and queue inspection
         run: python -m unittest tests.test_event_inspection -v
 
+      - name: Smoke-test event inspector CLI against seeded Cianjur data
+        run: python -m scripts.inspect_event IDN-CIANJUR-2022-USGS-us7000ir9t
+
       - name: Test multi-source event provenance
         run: python -m unittest tests.test_event_provenance -v
 

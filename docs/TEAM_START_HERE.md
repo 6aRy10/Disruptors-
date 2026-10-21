@@ -95,6 +95,19 @@ Test suite: `tests/`.
 Detailed architecture: `docs/architecture.md`.
 Demo: `docs/demo_contract.md`.
 
+## Check local Python dependencies after pulling updates
+
+If a new import fails, install the current project requirements into the
+active virtual environment. This does not modify PostgreSQL:
+
+```powershell
+python -m pip install -e .
+python -m pip check
+```
+
+The live ingestion runner loads AI agent modules only when the agent path is
+called. The standard feed-orchestrator mode does not require AI execution.
+
 ## Run real event ingestion locally
 
 Once the database is loaded, run this command from the repository root:

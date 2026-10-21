@@ -158,6 +158,9 @@ jobs:
       - name: Test component feasibility
         run: python -m unittest tests.test_component_feasibility -v
 
+      - name: Test deterministic runner without AI import dependencies
+        run: python -m unittest tests.test_live_stack_imports -v
+
       - name: Test unified live ingestion and orchestration
         run: python -m unittest tests.test_live_stack -v
 

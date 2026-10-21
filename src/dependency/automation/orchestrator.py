@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from dependency.agents.orchestrator import run_event_autopilot
 from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
 from dependency.memory.service import save_plan_snapshot
@@ -124,6 +123,9 @@ def _process_external_event(
         }
 
     if run_agents:
+        # Deterministic ingestion must not depend on optional AI tool imports.
+        from dependency.agents.orchestrator import run_event_autopilot
+
         result = run_event_autopilot(
             event_id=event_id,
             radius_km=radius_km,

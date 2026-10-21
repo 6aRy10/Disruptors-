@@ -163,36 +163,34 @@ class DehardcodingTests(unittest.TestCase):
         with connect() as conn:
             row = conn.execute(
                 """
-                SELECT f.facility_id,ST_X(f.geom::geometry),ST_Y(f.geom::geometry)
+                SELECT
+                  f.facility_id,
+                  pf.sku,
+                  ST_X(f.geom::geometry),
+                  ST_Y(f.geom::geometry)
                 FROM facilities f
                 JOIN facility_network_links l
                   ON l.facility_id=f.facility_id
+                JOIN product_facilities pf
+                  ON pf.facility_id=f.facility_id
+                JOIN fulfilment_commitments fc
+                  ON fc.sku=pf.sku
                 WHERE f.facility_id LIKE 'DTF-A-%'
-                  AND EXISTS (
-                    SELECT 1
-                    FROM product_facilities pf
-                    WHERE pf.facility_id=f.facility_id
-                      AND pf.sku LIKE 'DTSKU-%'
-                  )
-                ORDER BY f.facility_id
+                  AND pf.sku LIKE 'DTSKU-%'
+                  AND f.geom IS NOT NULL
+                GROUP BY f.facility_id,pf.sku,f.geom
+                HAVING COUNT(fc.commitment_id) > 0
+                ORDER BY f.facility_id,pf.sku
                 LIMIT 1
                 """
             ).fetchone()
             self.assertIsNotNone(row)
-            facility_id, lon, lat = row
-            expected = {
-                r[0]
-                for r in conn.execute(
-                    """
-                    SELECT sku
-                    FROM product_facilities
-                    WHERE facility_id=%s
-                      AND sku LIKE 'DTSKU-%'
-                    ORDER BY sku
-                    """,
-                    (facility_id,),
-                ).fetchall()
-            }
+            facility_id, expected_sku, lon, lat = row
+
+            conn.execute(
+                "DELETE FROM external_events WHERE event_id=%s",
+                (event_id,),
+            )
             conn.execute(
                 """
                 INSERT INTO external_events(
@@ -214,7 +212,7 @@ class DehardcodingTests(unittest.TestCase):
             "facility_id": facility_id,
             "longitude": float(lon),
             "latitude": float(lat),
-            "expected_skus": expected,
+            "expected_sku": expected_sku,
         }
 
     def _delete_test_event(self, event_id: str):
@@ -395,21 +393,15 @@ class DehardcodingTests(unittest.TestCase):
                 radius_km=3,
             )
             impacted = {row["sku"] for row in impact["products"]}
-            self.assertTrue(fixture["expected_skus"])
-            self.assertTrue(
-                fixture["expected_skus"] & impacted,
+            self.assertIn(
+                fixture["expected_sku"],
+                impacted,
                 (
-                    f"Expected at least one of {sorted(fixture['expected_skus'])} "
-                    f"from facility {fixture['facility_id']}; got "
-                    f"{sorted(impacted)}"
+                    f"Expected SKU {fixture['expected_sku']} from facility "
+                    f"{fixture['facility_id']}; got {sorted(impacted)}"
                 ),
             )
-            self.assertTrue(
-                all(
-                    sku.startswith("DTSKU-")
-                    for sku in fixture["expected_skus"] & impacted
-                )
-            )
+            self.assertTrue(fixture["expected_sku"].startswith("DTSKU-"))
         finally:
             self._delete_test_event(event_id)
 

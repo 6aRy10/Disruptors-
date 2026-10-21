@@ -80,7 +80,10 @@ optimization, approvals and memory paths. This is not certification of
 real supplier identity, real private transactions, production security,
 production Kafka service or deploy reliability.
 
-Still incomplete: facility-wide dated capacity plus upstream shared material
+Still incomplete: confirmed facility-wide capacity in live managed operations,
+upstream joint material allocation (a modeled source contention audit now flags
+conflicts but does not solve a multi-material discrete optimizer), and supplier
+evidence to authenticated contact delivery. Further incomplete:
 optimization; live supplier task-to-contact end-to-end automation; authenticated
 user roles; actual Aiven provisioning and safe managed PostGIS migration;
 official tariff intelligence; operational worker deployment and real-time
@@ -104,3 +107,25 @@ For deep product rationale, read
 `docs/PRODUCT_CONTRACT_AND_BUILD_GATES.md`. For managed data readiness,
 read `docs/AIVEN_FREE_TIER_DEPLOYMENT.md`. For all regression commands,
 check `.github/workflows/test.yml`.
+
+## Dated factory ceilings — new operational contract
+
+The joint solver now reads `confirmed_facility_capacity` from PostgreSQL
+for the incident scenario date. A confirmation applies to the **entire factory
+across SKUs**, not to an individual product. A dated source reference is
+required; the model may not infer capacity from earthquake proximity.
+
+`POST /facilities/{facility_id}/capacity-confirmations` accepts
+`week_start`, `valid_until`, `capacity_units`, `committed_units`,
+`evidence_source`, `evidence_reference` and `confirmed_by`.
+The update creates transactional state/outbox records for every assigned SKU.
+Repeated identical confirmations do not increment state again.
+
+The new multi-SKU material audit detects shared source/material contention
+from actual BOM and material-allocation edges. Its weekly ceilings are
+**simulated private capacity**, not confirmed evidence or a complete global
+multi-material optimizer. A plan with unresolved shared material evidence is
+not marked executable. Do not claim otherwise in the pitch.
+
+After `git pull --ff-only`, run `python -m scripts.apply_migrations`
+(non-destructive) to create the new confirmed capacity table.

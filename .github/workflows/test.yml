@@ -227,6 +227,9 @@ jobs:
       - name: Test transport feasibility
         run: python -m unittest tests.test_transport_feasibility -v
 
+      - name: Test facility-wide capacity confirmation against PostgreSQL
+        run: python -m unittest tests.test_facility_capacity_db -v
+
       - name: Test dated confirmed facility-wide capacity
         run: python -m unittest tests.test_confirmed_facility_caps -v
 

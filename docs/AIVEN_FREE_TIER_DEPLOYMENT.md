@@ -77,3 +77,27 @@ The consumer subscribes to executed-action events as well. During Kafka
 cutover, **run only one active event consumer**: this prevents overlapping
 handlers from racing before idempotency commits. Sequential redelivery is
 safe; concurrent exactly-once delivery is not guaranteed yet.
+
+## Free tier versus trial (checked 2026-10-21)
+
+Aiven's **always-free** tier currently provides PostgreSQL (1 GB disk,
+1 GB RAM), and managed Kafka (up to 250 KB/s ingress/egress and up to
+3 days of retention). The **30-day trial** allows credits for paid plans.
+Free PostgreSQL supports extensions in principle, and Aiven lists PostGIS
+among its supported PostgreSQL extensions. Exact extension availability,
+permissions, service plan and disk use must be tested on **the provisioned
+service** before migrating the 266,737-row graph. The trial is not a reason
+to risk the only working database.
+
+Official references:
+- https://aiven.io/free-tier
+- https://aiven.io/docs/products/postgresql/concepts/pg-free-tier
+- https://aiven.io/docs/products/postgresql/reference/list-of-extensions
+- https://aiven.io/docs/platform/concepts/service-pricing
+
+**Current engineering choice:** use a free Kafka service as the first managed
+infrastructure target. Keep PostgreSQL/PostGIS local until a managed database
+passes read-only PostGIS/size checks. If the local database requires more than
+1 GB, evaluate the trial paid PostgreSQL instead of truncating the twin.
+The user must create the services in their own Aiven console; this repo cannot
+and must not provision using credentials stored in GitHub.

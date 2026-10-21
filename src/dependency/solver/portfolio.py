@@ -309,6 +309,23 @@ def plan_event_recovery(
                 optimized_protected_margin - optimized_transport_cost,
                 2,
             ),
+            "joint_protected_units": (
+                joint_allocation["protected_units"] if joint_allocation else None
+            ),
+            "joint_late_units": (
+                joint_allocation["late_units"] if joint_allocation else None
+            ),
+            "joint_protected_margin_eur": (
+                joint_allocation["protected_margin_eur"] if joint_allocation else None
+            ),
+            "joint_transport_cost_eur": (
+                joint_allocation["incremental_transport_cost_eur"]
+                if joint_allocation else None
+            ),
+            "joint_metrics_are_provisional": (
+                not joint_allocation["portfolio_allocation_verified"]
+                if joint_allocation else None
+            ),
         },
         "operationally_affected_skus": [p["sku"] for p in operational],
         "exposure_only_skus": [p["sku"] for p in exposure_only],

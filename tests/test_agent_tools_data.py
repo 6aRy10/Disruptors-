@@ -51,7 +51,12 @@ class AgentDataToolTests(unittest.TestCase):
             5,
         )
         self.assertTrue(result["matches"])
-        self.assertIn("GLOSTAR", result["matches"][0]["name"].upper())
+        top = result["matches"][0]
+        self.assertGreaterEqual(top["match_score"], 80.0)
+        self.assertIn(
+            "GLOSTAR",
+            (top["official_name"] or top["name"]).upper(),
+        )
 
     def test_transport_options_are_data_driven(self):
         result = get_transport_options(

@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS network_facility_relationships (
   provenance_class text NOT NULL,
   source_url text
 );
+CREATE INDEX IF NOT EXISTS network_facility_relationships_facility_idx
+  ON network_facility_relationships(network_facility_id, list_type);
 
 CREATE TABLE IF NOT EXISTS network_parent_groups (
   parent_id text PRIMARY KEY,
@@ -158,6 +160,8 @@ CREATE TABLE IF NOT EXISTS product_facilities (
   provenance_class text NOT NULL,
   PRIMARY KEY(sku, facility_id)
 );
+CREATE INDEX IF NOT EXISTS product_facilities_facility_idx
+  ON product_facilities(facility_id, approved, sku);
 
 CREATE TABLE IF NOT EXISTS bom (
   sku text REFERENCES products(sku),
@@ -166,6 +170,8 @@ CREATE TABLE IF NOT EXISTS bom (
   provenance_class text NOT NULL,
   PRIMARY KEY(sku, material_id)
 );
+CREATE INDEX IF NOT EXISTS bom_material_idx
+  ON bom(material_id, sku);
 
 CREATE TABLE IF NOT EXISTS material_sources (
   material_id text REFERENCES materials(material_id),
@@ -177,6 +183,8 @@ CREATE TABLE IF NOT EXISTS material_sources (
   provenance_class text NOT NULL,
   PRIMARY KEY(material_id, facility_id)
 );
+CREATE INDEX IF NOT EXISTS material_sources_facility_idx
+  ON material_sources(facility_id, approved, material_id);
 
 -- Exact source-of-supply edge. A material source does not automatically feed every SKU
 -- that uses the same material. This table links a source to the consuming assembly site/SKU.
@@ -190,6 +198,12 @@ CREATE TABLE IF NOT EXISTS material_allocations (
   provenance_class text NOT NULL,
   PRIMARY KEY(material_id, source_facility_id, destination_facility_id, sku)
 );
+CREATE INDEX IF NOT EXISTS material_allocations_source_idx
+  ON material_allocations(source_facility_id, approved, sku);
+CREATE INDEX IF NOT EXISTS material_allocations_destination_idx
+  ON material_allocations(destination_facility_id, sku, approved);
+CREATE INDEX IF NOT EXISTS material_allocations_sku_idx
+  ON material_allocations(sku, approved, destination_facility_id);
 
 CREATE TABLE IF NOT EXISTS substitutions (
   material_id text REFERENCES materials(material_id),
@@ -212,6 +226,8 @@ CREATE TABLE IF NOT EXISTS inventory (
   provenance_class text NOT NULL,
   PRIMARY KEY(site_id, item_type, item_id)
 );
+CREATE INDEX IF NOT EXISTS inventory_item_idx
+  ON inventory(item_type, item_id, site_id);
 
 CREATE TABLE IF NOT EXISTS supplier_capacity (
   facility_id text REFERENCES facilities(facility_id),
@@ -225,6 +241,8 @@ CREATE TABLE IF NOT EXISTS supplier_capacity (
   provenance_class text NOT NULL,
   PRIMARY KEY(facility_id, sku, week_start)
 );
+CREATE INDEX IF NOT EXISTS supplier_capacity_sku_idx
+  ON supplier_capacity(sku, facility_id, week_start DESC);
 
 CREATE TABLE IF NOT EXISTS supplier_capacity_observations (
   observation_id text PRIMARY KEY,
@@ -250,6 +268,8 @@ CREATE TABLE IF NOT EXISTS production_orders (
   status text,
   provenance_class text NOT NULL
 );
+CREATE INDEX IF NOT EXISTS production_orders_sku_facility_idx
+  ON production_orders(sku, facility_id, status, due_date);
 
 CREATE TABLE IF NOT EXISTS fulfilment_commitments (
   commitment_id text PRIMARY KEY,
@@ -266,6 +286,8 @@ CREATE TABLE IF NOT EXISTS fulfilment_commitments (
   partial_allowed boolean,
   provenance_class text NOT NULL
 );
+CREATE INDEX IF NOT EXISTS fulfilment_commitments_sku_due_idx
+  ON fulfilment_commitments(sku, priority, due_date, commitment_id);
 
 CREATE TABLE IF NOT EXISTS purchase_orders (
   po_id text PRIMARY KEY,
@@ -276,6 +298,8 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   status text,
   provenance_class text NOT NULL
 );
+CREATE INDEX IF NOT EXISTS purchase_orders_material_eta_idx
+  ON purchase_orders(material_id, status, eta, supplier_facility_id);
 
 CREATE TABLE IF NOT EXISTS transport_lanes (
   lane_id text PRIMARY KEY,
@@ -290,6 +314,10 @@ CREATE TABLE IF NOT EXISTS transport_lanes (
   policy_tag text,
   provenance_class text NOT NULL
 );
+CREATE INDEX IF NOT EXISTS transport_lanes_origin_market_idx
+  ON transport_lanes(origin_facility_id, destination_market, status);
+CREATE INDEX IF NOT EXISTS transport_lanes_port_idx
+  ON transport_lanes(port_unlocode, status);
 
 CREATE TABLE IF NOT EXISTS external_events (
   event_id text PRIMARY KEY,
@@ -340,6 +368,9 @@ CREATE TABLE IF NOT EXISTS scenario_facility_state (
   provenance_class text NOT NULL,
   PRIMARY KEY(scenario_id, facility_id)
 );
+CREATE INDEX IF NOT EXISTS scenario_facility_state_facility_idx
+  ON scenario_facility_state(facility_id, scenario_id, status);
+
 
 CREATE TABLE IF NOT EXISTS event_outbox (
   outbox_id text PRIMARY KEY,

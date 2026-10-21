@@ -50,6 +50,9 @@ jobs:
       - name: Test enterprise data scale
         run: python -m unittest tests.test_data_scale -v
 
+      - name: Test enterprise graph indexes
+        run: python -m unittest tests.test_scale_indexes -v
+
       - name: Test network and hidden dependencies
         run: python -m unittest tests.test_network_and_dependencies -v
 

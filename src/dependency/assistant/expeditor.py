@@ -78,9 +78,32 @@ def answer_expeditor(*, question: str, event_id: str | None = None,
         if focused:
             related = [e for e in graph["edges"] if e["source"] == object_id or e["target"] == object_id]
             related_ids = {e["source"] for e in related} | {e["target"] for e in related}
+            # Directed reachability follows recorded edges, not nearby sites.
+            forward = {}
+            for edge in graph["edges"]:
+                forward.setdefault(edge["source"], []).append(edge["target"])
+            visited = {object_id}
+            queue = [(object_id, [object_id])]
+            paths = []
+            node_by_id = {n["id"]: n for n in graph["nodes"]}
+            while queue and len(visited) < 5000:
+                current, route = queue.pop(0)
+                if len(route) > 8:
+                    continue
+                for dest in forward.get(current, []):
+                    if dest in visited:
+                        continue
+                    visited.add(dest)
+                    following = route + [dest]
+                    target = node_by_id.get(dest, {})
+                    if target.get("node_type") == "CUSTOMER_COMMITMENT":
+                        paths.append({"order": target, "path": following})
+                    else:
+                        queue.append((dest, following))
             context["focused_object"] = {
                 "node": focused, "relationships": related[:60],
                 "neighbors": [n for n in graph["nodes"] if n["id"] in related_ids][:60],
+                "downstream_commitments": paths[:35],
             }
         context["graph"] = {
             "sku": selected_sku, "summary": graph["summary"],
@@ -167,6 +190,13 @@ def answer_expeditor(*, question: str, event_id: str | None = None,
             if focused["neighbors"]:
                 lines.append("Connected to: " + "; ".join(
                     str(n.get("label", n["id"])) for n in focused["neighbors"][:10]) + ".")
+            if focused["downstream_commitments"]:
+                lines.append("Downstream customer commitments: " + "; ".join(
+                    str(p["order"].get("commitment_id", p["order"]["id"])) +
+                    " (" + str(p["order"].get("qty", "unknown")) + " modeled units)"
+                    for p in focused["downstream_commitments"][:12]) + ".")
+            else:
+                lines.append("No downstream customer commitment is reachable along recorded directed edges.")
         graph = context.get("graph") or {}
         if graph:
             summary = graph["summary"]

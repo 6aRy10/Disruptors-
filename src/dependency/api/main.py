@@ -122,6 +122,7 @@ class ExpeditorQuestion(BaseModel):
     event_id: str | None = Field(default=None, max_length=180)
     sku: str | None = Field(default=None, max_length=120)
     facility_id: str | None = Field(default=None, max_length=180)
+    object_id: str | None = Field(default=None, max_length=240)
 
 
 class ConfirmFacilityWideCapacity(BaseModel):
@@ -348,7 +349,8 @@ def expeditor_read_only(body: ExpeditorQuestion):
     """Answer from approved read-only domain functions, never raw model SQL."""
     try:
         return answer_expeditor(question=body.question, event_id=body.event_id,
-                                sku=body.sku, facility_id=body.facility_id)
+                                sku=body.sku, facility_id=body.facility_id,
+                                object_id=body.object_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

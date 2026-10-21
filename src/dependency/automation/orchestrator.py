@@ -193,10 +193,12 @@ def _process_plan_invalidated(
         if sku not in product_skus:
             continue
 
+        # Shared upstream and backup capacity couple SKUs. Persist the full
+        # recomputed portfolio; saving only the changed SKU leaves related
+        # products with stale plans despite the joint optimizer rerunning.
         saved = _save_portfolio_plans(
             incident_id=incident["incident_id"],
             portfolio=portfolio,
-            only_sku=sku,
         )
         replans.append(
             {

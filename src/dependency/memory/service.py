@@ -54,6 +54,40 @@ def ensure_incident(
                 "created": False,
             }
 
+        # A live event starts without a private operational scenario. When
+        # evidence later creates that scenario, keep the original incident ID,
+        # attached evidence and investigation tasks instead of splitting memory.
+        if scenario_id is not None:
+            unscoped = conn.execute(
+                """
+                SELECT incident_id,status,detected_at
+                FROM incidents
+                WHERE event_id=%s AND scenario_id IS NULL
+                  AND status IN ('OPEN','INVESTIGATING')
+                ORDER BY detected_at DESC,incident_id
+                LIMIT 1 FOR UPDATE
+                """,
+                (event_id,),
+            ).fetchone()
+            if unscoped:
+                updated = conn.execute(
+                    """
+                    UPDATE incidents
+                    SET scenario_id=%s,updated_at=now()
+                    WHERE incident_id=%s
+                    RETURNING updated_at
+                    """,
+                    (scenario_id, unscoped[0]),
+                ).fetchone()
+                conn.commit()
+                return {
+                    "incident_id": unscoped[0],
+                    "status": unscoped[1],
+                    "detected_at": unscoped[2].isoformat(),
+                    "updated_at": updated[0].isoformat(),
+                    "created": False,
+                }
+
         incident_id = _id("INC")
         row = conn.execute(
             """

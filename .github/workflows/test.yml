@@ -178,6 +178,9 @@ jobs:
       - name: Test live evidence task construction
         run: python -m unittest tests.test_investigation_tasks tests.test_live_investigation -v
 
+      - name: Test cross-SKU invalidation and portfolio replanning
+        run: python -m unittest tests.test_portfolio_invalidation -v
+
       - name: Test local event orchestration
         run: python -m unittest tests.test_automation -v
 

@@ -121,3 +121,6 @@ jobs:
 
       - name: Test event-type exposure engines
         run: python -m unittest tests.test_event_types -v
+
+      - name: Test PortWatch normalization
+        run: python -m unittest tests.test_portwatch -v

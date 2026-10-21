@@ -74,6 +74,9 @@ jobs:
       - name: Test deterministic core
         run: python -m unittest tests.test_final -v
 
+      - name: Test agent runtime argument recovery
+        run: python -m unittest tests.test_agent_runtime_arguments -v
+
       - name: Test agent contracts
         run: python -m unittest tests.test_agents -v
 

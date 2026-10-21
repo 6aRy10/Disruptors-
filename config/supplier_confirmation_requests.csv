@@ -1,2 +1,0 @@
-request_id,facility_id,sku,field_requested,system_value,requested_at,recipient_contact_id,status,provenance_class
-REQ-CAP-001,ADI26-0240,JI2993,weekly_capacity_units,9500,2026-10-21T12:00:00Z,CNT-HS,awaiting_reply,SIMULATED_PRIVATE

@@ -215,10 +215,13 @@ function renderMap() {
   svg.innerHTML = markup;
 
   const stats = state.snapshot?.network?.stats || {};
+  const scale = state.snapshot?.data_scale || {};
   $("networkStats").innerHTML = `
-    <strong>${number(stats.network_facilities)}</strong> facilities ·
-    <strong>${number(stats.official_list_relationships)}</strong> relationships ·
-    <strong>${number(stats.countries)}</strong> countries
+    <strong>${number(stats.network_facilities)}</strong> public facilities ·
+    <strong>${number(stats.official_list_relationships)}</strong> public relationships ·
+    <strong>${number(scale.products)}</strong> private SKUs ·
+    <strong>${number(scale.bom_lines)}</strong> BOM rows ·
+    <strong>${number(scale.material_allocation_edges)}</strong> source edges
   `;
 
   $("eventTruthBanner").textContent =

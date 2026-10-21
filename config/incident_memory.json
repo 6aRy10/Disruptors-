@@ -1,6 +1,0 @@
-{
-  "schema_version": 2,
-  "status": "DEPRECATED_FILE_FIXTURE",
-  "note": "Operational incident memory now lives in PostgreSQL: incidents, incident_evidence, incident_plan_history, incident_decisions, incident_outcomes, and agent_runs. Do not use this JSON file as current operational truth.",
-  "incidents": []
-}

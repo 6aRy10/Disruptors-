@@ -1,4 +1,0 @@
-notification_id,event_id,channel,trigger,status,note
-NTF-IDN-01,IDN-CIANJUR-2022-USGS-us7000ir9t,planner_slack,risk_threshold_crossed,pending,Main Indonesia incident alert.
-NTF-VNM-01,VNM-US-RECIPROCAL-TARIFF-2025,planner_slack,risk_threshold_crossed,pending,Current trade-policy risk card.
-NTF-CHN-01,CHN-YANTIAN-2021-PORT,planner_slack,risk_threshold_crossed,pending,Yantian route/ETA incident alert.

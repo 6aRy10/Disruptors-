@@ -30,6 +30,16 @@ class DashboardSnapshotTests(unittest.TestCase):
             first["network"]["stats"]["official_list_relationships"],
             836,
         )
+        self.assertGreaterEqual(first["data_scale"]["products"], 456)
+        self.assertGreaterEqual(first["data_scale"]["bom_lines"], 5100)
+        self.assertGreaterEqual(
+            first["data_scale"]["material_allocation_edges"],
+            30000,
+        )
+        self.assertGreaterEqual(
+            first["data_scale"]["customer_commitments"],
+            3600,
+        )
         self.assertEqual(len(first["network"]["facilities"]), 770)
         self.assertEqual(
             first["metrics"]["public_facilities_potentially_exposed"],

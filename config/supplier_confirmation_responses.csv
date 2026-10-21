@@ -1,2 +1,0 @@
-response_id,request_id,raw_message,parsed_capacity_units,effective_until,parser_confidence,supplier_confirmed,evidence_message_id,provenance_class
-RESP-CAP-001,REQ-CAP-001,"Capacity has declined to 5,500 pairs per week until 2026-11-04.",5500,2026-11-04,0.98,True,SLACK-DEMO-001,SIMULATED_PRIVATE

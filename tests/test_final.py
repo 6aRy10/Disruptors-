@@ -1,75 +1,102 @@
 import unittest
 
-from dependency.risk.scoring import band, event_business_risk, facility_risk, product_risk
+from dependency.risk.scoring import (
+    band,
+    event_business_risk,
+    facility_risk,
+    product_risk,
+)
 from dependency.solver.allocation import Order, allocate_orders, summarize
 from dependency.solver.feasibility import check_plan
 from dependency.solver.tariff import tariff_impact
-from dependency.state import DemoState
 from dependency.supplier_confirmations import parse_supplier_reply
 
-ORDERS = [
-    Order("ORD-JI-EU", 4000, 130, 55, 1),
-    Order("ORD-JI-NA", 3000, 130, 50, 2),
-    Order("ORD-JI-GC", 2500, 130, 52, 3),
-]
 
+class DeterministicCoreTests(unittest.TestCase):
+    def test_allocation_obeys_priority_and_partial_fulfilment(self):
+        orders = [
+            Order("P1", 1000, 120, 40, 1),
+            Order("P2", 900, 110, 45, 2),
+            Order("P3", 800, 130, 50, 3),
+        ]
+        result = summarize(allocate_orders(orders, 1500))
+        allocations = {
+            row["order_id"]: row
+            for row in result["allocations"]
+        }
 
-class DependencyFinalTests(unittest.TestCase):
-    def test_baseline_all_demand_protected(self):
-        result = summarize(allocate_orders(ORDERS, 9600))
-        self.assertEqual(result["late_units"], 0)
+        self.assertEqual(allocations["P1"]["allocated_qty"], 1000)
+        self.assertEqual(allocations["P2"]["allocated_qty"], 500)
+        self.assertEqual(allocations["P3"]["allocated_qty"], 0)
+        self.assertEqual(result["late_units"], 1200)
 
-    def test_supplier_capacity_shock(self):
-        result = summarize(allocate_orders(ORDERS, 5600))
-        self.assertEqual(result["late_units"], 3900)
-        self.assertEqual(result["protected_margin_eur"], 300000)
-        allocations = {row["order_id"]: row for row in result["allocations"]}
-        self.assertEqual(allocations["ORD-JI-EU"]["allocated_qty"], 4000)
-        self.assertEqual(allocations["ORD-JI-NA"]["allocated_qty"], 1600)
-        self.assertEqual(allocations["ORD-JI-GC"]["allocated_qty"], 0)
+    def test_feasibility_is_input_driven(self):
+        feasible = check_plan(
+            required_units=1000,
+            finished_units=250,
+            assembly_units=750,
+        )
+        shortage = check_plan(
+            required_units=1000,
+            finished_units=200,
+            assembly_units=500,
+        )
 
-    def test_feasibility_shortage(self):
-        result = check_plan(required_units=9500, finished_units=2100, assembly_units=3500)
-        self.assertFalse(result["feasible"])
-        self.assertEqual(result["shortage_units"], 3900)
+        self.assertTrue(feasible["feasible"])
+        self.assertEqual(feasible["shortage_units"], 0)
+        self.assertFalse(shortage["feasible"])
+        self.assertEqual(shortage["shortage_units"], 300)
 
-    def test_supplier_reply_parse_requires_confirmation(self):
-        result = parse_supplier_reply("Capacity has declined to 5,500 pairs per week until 2026-11-04.")
+    def test_supplier_reply_parser_accepts_new_capacity_values(self):
+        result = parse_supplier_reply(
+            "Current capacity is 7,250 pairs per week until 2026-12-15."
+        )
         self.assertTrue(result["ok"])
-        self.assertEqual(result["capacity_units"], 5500)
+        self.assertEqual(result["capacity_units"], 7250)
+        self.assertEqual(result["effective_until"], "2026-12-15")
         self.assertTrue(result["requires_confirmation"])
 
-    def test_confirm_changes_state(self):
-        state = DemoState()
-        old_version = state.version
-        state.confirm_capacity(5500)
-        self.assertGreater(state.version, old_version)
-        self.assertEqual(state.hwa_available, 3500)
+    def test_supplier_reply_parser_rejects_ambiguous_numbers(self):
+        result = parse_supplier_reply(
+            "Capacity may be 6,000 units per week, or 8,000 units per week "
+            "after maintenance."
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(
+            result["reason"],
+            "Multiple possible capacity values found",
+        )
 
-    def test_risk_bands(self):
+    def test_risk_band_boundaries(self):
         self.assertEqual(band(29), "LOW")
         self.assertEqual(band(30), "MODERATE")
-        self.assertEqual(band(79), "CRITICAL")
+        self.assertEqual(band(49.9), "MODERATE")
+        self.assertEqual(band(50), "HIGH")
+        self.assertEqual(band(69.9), "HIGH")
+        self.assertEqual(band(70), "CRITICAL")
 
-    def test_event_risk_math(self):
-        self.assertEqual(event_business_risk(82, 86, 74, 72, 88), 80.3)
-        self.assertEqual(event_business_risk(60, 76, 45, 72, 62), 63.7)
-        self.assertEqual(event_business_risk(70, 68, 58, 50, 65), 62.4)
+    def test_event_risk_formula_uses_inputs(self):
+        low = event_business_risk(10, 20, 10, 20, 10)
+        high = event_business_risk(90, 90, 80, 90, 80)
+
+        self.assertLess(low, high)
+        self.assertEqual(low, 14.5)
+        self.assertEqual(high, 86.5)
 
     def test_existing_lower_level_risk_math(self):
         self.assertEqual(facility_risk(80, 90, 80, 70), 80.5)
         self.assertEqual(product_risk(85, 65, 75, 85), 77.0)
 
-    def test_tariff_ground_truth(self):
+    def test_tariff_math_is_not_sku_specific(self):
         result = tariff_impact(
-            customs_value_per_unit=60,
-            additional_rate=0.125,
-            units=2500,
-            baseline_unit_margin=47,
+            customs_value_per_unit=80,
+            additional_rate=0.15,
+            units=1800,
+            baseline_unit_margin=52,
         )
-        self.assertEqual(result["additional_cost_per_unit"], 7.5)
-        self.assertEqual(result["total_additional_cost"], 18750.0)
-        self.assertEqual(result["new_unit_margin"], 39.5)
+        self.assertEqual(result["additional_cost_per_unit"], 12.0)
+        self.assertEqual(result["total_additional_cost"], 21600.0)
+        self.assertEqual(result["new_unit_margin"], 40.0)
 
 
 if __name__ == "__main__":

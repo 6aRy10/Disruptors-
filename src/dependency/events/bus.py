@@ -13,6 +13,8 @@ TOPIC_INCIDENT_DETECTED = "incident.detected"
 TOPIC_PLAN_GENERATED = "plan.generated"
 TOPIC_PLAN_INVALIDATED = "plan.invalidated"
 TOPIC_APPROVAL_REQUESTED = "approval.requested"
+TOPIC_SUPPLIER_CONFIRMATION_REQUESTED = "supplier.confirmation.requested"
+TOPIC_SUPPLIER_CONFIRMATION_REPLY = "supplier.confirmation.reply_received"
 TOPIC_DECISION_CONFIRMED = "decision.confirmed"
 
 

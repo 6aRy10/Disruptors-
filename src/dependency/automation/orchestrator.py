@@ -231,6 +231,8 @@ def handle_event(
     if topic in {
         "business.state.updated",
         "supplier.capacity.updated",
+        "supplier.confirmation.requested",
+        "supplier.confirmation.reply_received",
         "incident.detected",
         "plan.generated",
         "approval.requested",

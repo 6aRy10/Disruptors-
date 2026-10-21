@@ -114,6 +114,19 @@ CREATE TABLE IF NOT EXISTS facility_network_links (
   PRIMARY KEY(facility_id, network_facility_id)
 );
 
+CREATE TABLE IF NOT EXISTS operational_contacts (
+  contact_id text PRIMARY KEY,
+  entity_type text NOT NULL,
+  entity_id text NOT NULL,
+  name text NOT NULL,
+  channel text NOT NULL,
+  address text NOT NULL,
+  can_confirm_operational_data boolean NOT NULL DEFAULT false,
+  provenance_class text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS operational_contacts_entity_idx
+  ON operational_contacts(entity_type, entity_id);
+
 CREATE TABLE IF NOT EXISTS products (
   sku text PRIMARY KEY,
   name text NOT NULL,
@@ -366,6 +379,53 @@ CREATE TABLE IF NOT EXISTS incidents (
   updated_at timestamptz NOT NULL DEFAULT now(),
   provenance_class text NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS supplier_confirmation_requests (
+  request_id text PRIMARY KEY,
+  incident_id text REFERENCES incidents(incident_id) ON DELETE SET NULL,
+  scenario_id text REFERENCES scenarios(scenario_id) ON DELETE SET NULL,
+  facility_id text NOT NULL REFERENCES facilities(facility_id),
+  sku text NOT NULL REFERENCES products(sku),
+  field_requested text NOT NULL,
+  system_value_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  recipient_contact_id text REFERENCES operational_contacts(contact_id),
+  message_text text NOT NULL,
+  status text NOT NULL CHECK (
+    status IN (
+      'DRAFT','PENDING_DISPATCH','SENT','REPLY_RECEIVED',
+      'PARSE_FAILED','CONFIRMED','REJECTED','FAILED'
+    )
+  ),
+  external_channel_id text,
+  external_thread_ts text,
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  sent_at timestamptz,
+  replied_at timestamptz,
+  confirmed_at timestamptz,
+  last_error text,
+  provenance_class text NOT NULL
+);
+CREATE INDEX IF NOT EXISTS supplier_confirmation_requests_status_idx
+  ON supplier_confirmation_requests(status, requested_at);
+CREATE INDEX IF NOT EXISTS supplier_confirmation_requests_thread_idx
+  ON supplier_confirmation_requests(external_channel_id, external_thread_ts);
+
+CREATE TABLE IF NOT EXISTS supplier_confirmation_replies (
+  reply_id text PRIMARY KEY,
+  request_id text NOT NULL REFERENCES supplier_confirmation_requests(request_id)
+    ON DELETE CASCADE,
+  sender_external_id text,
+  source_message_id text,
+  raw_message text NOT NULL,
+  parsed_json jsonb NOT NULL DEFAULT '{}'::jsonb,
+  parse_ok boolean NOT NULL DEFAULT false,
+  supplier_confirmed boolean NOT NULL DEFAULT false,
+  received_at timestamptz NOT NULL DEFAULT now(),
+  applied_at timestamptz,
+  UNIQUE(source_message_id)
+);
+CREATE INDEX IF NOT EXISTS supplier_confirmation_replies_request_idx
+  ON supplier_confirmation_replies(request_id, received_at);
 
 CREATE TABLE IF NOT EXISTS incident_evidence (
   evidence_id text PRIMARY KEY,

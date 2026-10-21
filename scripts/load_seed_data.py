@@ -63,6 +63,8 @@ def load() -> None:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
 
         # Deterministic demo reset for transient incident/event state.
+        conn.execute("DELETE FROM supplier_confirmation_replies")
+        conn.execute("DELETE FROM supplier_confirmation_requests")
         conn.execute("DELETE FROM approval_requests")
         conn.execute("DELETE FROM incident_decisions")
         conn.execute("DELETE FROM incident_plan_history")
@@ -219,6 +221,27 @@ def load() -> None:
                         1.0, "PUBLIC_DERIVED",
                     ),
                 )
+
+        conn.execute("DELETE FROM operational_contacts")
+        for r in read_csv("contacts.csv"):
+            conn.execute(
+                """
+                INSERT INTO operational_contacts(
+                  contact_id,entity_type,entity_id,name,channel,address,
+                  can_confirm_operational_data,provenance_class
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    r["contact_id"],
+                    r["entity_type"],
+                    r["entity_id"],
+                    r["name"],
+                    r["channel"],
+                    r["address"],
+                    boolean(r["can_confirm_operational_data"]),
+                    r["provenance_class"],
+                ),
+            )
 
         for r in read_csv("products.csv"):
             conn.execute(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,16 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.impact import trace_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
+from dependency.services.supplier_outreach import (
+    confirm_supplier_reply,
+    create_capacity_confirmation_request,
+    dispatch_confirmation_request,
+    get_confirmation_request,
+    record_confirmation_reply,
+    record_slack_reply,
+    reject_supplier_reply,
+)
+from dependency.notifications.slack import verify_slack_signature
 from dependency.services.approvals import (
     decide_approval,
     list_approval_requests,
@@ -151,6 +161,30 @@ class ApprovalDecisionBody(BaseModel):
     decision: str
     decided_by: str
     decision_reason: str
+
+
+class SupplierCapacityRequestBody(BaseModel):
+    facility_id: str
+    sku: str
+    incident_id: str | None = None
+    scenario_id: str | None = None
+    recipient_contact_id: str | None = None
+    dispatch: bool = False
+
+
+class SupplierReplyConfirmBody(BaseModel):
+    reply_id: str | None = None
+    confirmed_by: str
+
+
+class SupplierReplyRejectBody(BaseModel):
+    reason: str
+
+
+class SupplierRawReplyBody(BaseModel):
+    text: str
+    sender_external_id: str | None = None
+    source_message_id: str | None = None
 
 
 class CapacityConfirmation(BaseModel):
@@ -315,6 +349,132 @@ def scenario_risk(scenario_id: str, sku: str):
         return scenario_product_risk(scenario_id=scenario_id, sku=sku)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/supplier-confirmations/capacity")
+def supplier_confirmation_create(body: SupplierCapacityRequestBody):
+    try:
+        request_record = create_capacity_confirmation_request(
+            facility_id=body.facility_id,
+            sku=body.sku,
+            incident_id=body.incident_id,
+            scenario_id=body.scenario_id,
+            recipient_contact_id=body.recipient_contact_id,
+        )
+        if body.dispatch:
+            request_record["dispatch"] = dispatch_confirmation_request(
+                request_id=request_record["request_id"],
+            )
+        return request_record
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/supplier-confirmations/{request_id}")
+def supplier_confirmation_get(request_id: str):
+    try:
+        return get_confirmation_request(request_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/supplier-confirmations/{request_id}/dispatch")
+def supplier_confirmation_dispatch(request_id: str):
+    try:
+        return dispatch_confirmation_request(request_id=request_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/supplier-confirmations/{request_id}/reply")
+def supplier_confirmation_record_reply(
+    request_id: str,
+    body: SupplierRawReplyBody,
+):
+    try:
+        return record_confirmation_reply(
+            request_id=request_id,
+            raw_message=body.text,
+            sender_external_id=body.sender_external_id,
+            source_message_id=body.source_message_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/supplier-confirmations/{request_id}/confirm")
+def supplier_confirmation_confirm(
+    request_id: str,
+    body: SupplierReplyConfirmBody,
+):
+    try:
+        return confirm_supplier_reply(
+            request_id=request_id,
+            reply_id=body.reply_id,
+            confirmed_by=body.confirmed_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/supplier-confirmations/{request_id}/reject")
+def supplier_confirmation_reject(
+    request_id: str,
+    body: SupplierReplyRejectBody,
+):
+    try:
+        return reject_supplier_reply(
+            request_id=request_id,
+            reason=body.reason,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/integrations/slack/events")
+async def slack_events(request: Request):
+    raw_body = await request.body()
+    timestamp = request.headers.get("x-slack-request-timestamp", "")
+    signature = request.headers.get("x-slack-signature", "")
+
+    try:
+        valid = verify_slack_signature(
+            raw_body=raw_body,
+            timestamp=timestamp,
+            signature=signature,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if not valid:
+        raise HTTPException(status_code=401, detail="Invalid Slack signature.")
+
+    try:
+        payload = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid Slack JSON.") from exc
+
+    if payload.get("type") == "url_verification":
+        return {"challenge": payload.get("challenge")}
+
+    event = payload.get("event") or {}
+    if (
+        event.get("type") != "message"
+        or event.get("bot_id")
+        or event.get("subtype")
+    ):
+        return {"ok": True, "ignored": True}
+
+    result = record_slack_reply(
+        channel_id=event.get("channel", ""),
+        thread_ts=event.get("thread_ts"),
+        raw_message=event.get("text", ""),
+        sender_external_id=event.get("user"),
+        source_message_id=event.get("ts"),
+    )
+    return {"ok": True, "result": result}
 
 
 @app.post("/suppliers/capacity/parse")

@@ -99,6 +99,8 @@ RECOVERY_PLANNER = AgentSpec(
         "find_similar_incidents",
         "request_human_approval",
         "get_pending_approvals",
+        "request_supplier_capacity_confirmation",
+        "get_supplier_confirmation_request",
         "check_backup_independence",
     ),
     instructions=COMMON_GUARDRAILS
@@ -110,6 +112,8 @@ Your job:
 - Surface rejected plans and exact rejection reasons.
 - Treat stale supplier capacity as a reason to request confirmation.
 - Treat safety-stock release as a planner approval decision.
+- Create a durable supplier evidence request when capacity evidence is stale or missing.
+- Supplier free text never changes state until a parsed reply is explicitly confirmed.
 - Create a durable approval request when a proposed action needs human permission.
 - Never treat a pending approval request as an approval.
 - Check approved material/source alternatives and transport lanes before recommending a move.

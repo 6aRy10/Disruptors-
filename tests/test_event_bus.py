@@ -9,6 +9,8 @@ from dependency.events.bus import (
     TOPIC_PLAN_GENERATED,
     TOPIC_PLAN_INVALIDATED,
     TOPIC_SUPPLIER_CAPACITY,
+    TOPIC_SUPPLIER_CONFIRMATION_REPLY,
+    TOPIC_SUPPLIER_CONFIRMATION_REQUESTED,
     enqueue,
     pending,
 )
@@ -19,6 +21,14 @@ class EventBusTests(unittest.TestCase):
         self.assertEqual(TOPIC_EXTERNAL_EVENTS, "external.events")
         self.assertEqual(TOPIC_BUSINESS_STATE, "business.state.updated")
         self.assertEqual(TOPIC_SUPPLIER_CAPACITY, "supplier.capacity.updated")
+        self.assertEqual(
+            TOPIC_SUPPLIER_CONFIRMATION_REQUESTED,
+            "supplier.confirmation.requested",
+        )
+        self.assertEqual(
+            TOPIC_SUPPLIER_CONFIRMATION_REPLY,
+            "supplier.confirmation.reply_received",
+        )
         self.assertEqual(TOPIC_INCIDENT_DETECTED, "incident.detected")
         self.assertEqual(TOPIC_PLAN_GENERATED, "plan.generated")
         self.assertEqual(TOPIC_PLAN_INVALIDATED, "plan.invalidated")

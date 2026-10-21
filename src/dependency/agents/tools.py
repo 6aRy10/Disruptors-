@@ -14,6 +14,11 @@ from dependency.graph.shared_dependencies import backup_independence
 from dependency.memory.service import similar_incidents
 from dependency.risk.operational import scenario_product_risk
 from dependency.services.approvals import list_approval_requests, request_human_approval
+from dependency.services.supplier_outreach import (
+    create_capacity_confirmation_request,
+    dispatch_confirmation_request,
+    get_confirmation_request,
+)
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.component_feasibility import evaluate_component_feasibility
 from dependency.solver.material_timing import purchase_order_supply_by_date
@@ -518,6 +523,32 @@ def find_similar_incidents(event_type: str, limit: int = 5) -> dict:
     }
 
 
+def request_supplier_capacity_confirmation(
+    facility_id: str,
+    sku: str,
+    incident_id: str | None,
+    scenario_id: str | None,
+    recipient_contact_id: str | None,
+    dispatch: bool,
+) -> dict:
+    request = create_capacity_confirmation_request(
+        facility_id=facility_id,
+        sku=sku,
+        incident_id=incident_id,
+        scenario_id=scenario_id,
+        recipient_contact_id=recipient_contact_id,
+    )
+    if dispatch:
+        request["dispatch"] = dispatch_confirmation_request(
+            request_id=request["request_id"],
+        )
+    return request
+
+
+def get_supplier_confirmation_request(request_id: str) -> dict:
+    return get_confirmation_request(request_id)
+
+
 def request_human_approval_tool(
     incident_id: str,
     scenario_id: str | None,
@@ -573,6 +604,8 @@ def dispatch_tool(name: str, args: dict[str, Any]) -> Any:
         "find_similar_incidents": lambda: find_similar_incidents(**args),
         "request_human_approval": lambda: request_human_approval_tool(**args),
         "get_pending_approvals": lambda: get_pending_approvals(**args),
+        "request_supplier_capacity_confirmation": lambda: request_supplier_capacity_confirmation(**args),
+        "get_supplier_confirmation_request": lambda: get_supplier_confirmation_request(**args),
         "trace_downstream_impact": lambda: trace_event_impact(**args),
         "get_customer_commitments": lambda: get_customer_commitments(**args),
         "get_supplier_capacity": lambda: get_supplier_capacity(**args),
@@ -729,6 +762,46 @@ TOOL_SCHEMAS = [
                 "limit": {"type": "integer"},
             },
             "required": ["event_type", "limit"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "request_supplier_capacity_confirmation",
+        "description": "Create a durable supplier capacity-evidence request. If dispatch is true, sending is still blocked unless external messaging is enabled by environment policy.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "facility_id": {"type": "string"},
+                "sku": {"type": "string"},
+                "incident_id": {"type": ["string", "null"]},
+                "scenario_id": {"type": ["string", "null"]},
+                "recipient_contact_id": {"type": ["string", "null"]},
+                "dispatch": {"type": "boolean"},
+            },
+            "required": [
+                "facility_id",
+                "sku",
+                "incident_id",
+                "scenario_id",
+                "recipient_contact_id",
+                "dispatch"
+            ],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "get_supplier_confirmation_request",
+        "description": "Inspect one durable supplier confirmation request and its parsed replies without changing operational state.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "request_id": {"type": "string"}
+            },
+            "required": ["request_id"],
             "additionalProperties": False,
         },
     },

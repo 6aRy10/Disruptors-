@@ -28,6 +28,14 @@ class AgentContractTests(unittest.TestCase):
         self.assertIn("check_component_feasibility", AGENTS["recovery"].tool_names)
         self.assertIn("request_human_approval", AGENTS["recovery"].tool_names)
         self.assertIn("get_pending_approvals", AGENTS["recovery"].tool_names)
+        self.assertIn(
+            "request_supplier_capacity_confirmation",
+            AGENTS["recovery"].tool_names,
+        )
+        self.assertIn(
+            "get_supplier_confirmation_request",
+            AGENTS["recovery"].tool_names,
+        )
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from collections import defaultdict
 from math import floor
 
 from dependency.solver.optimization import _MinCostFlow, _orders, _resource_candidates
+from dependency.services.facility_capacity import confirmed_capacity_for_scenario
 
 
 def optimize_joint_recovery(
@@ -59,14 +60,27 @@ def optimize_joint_recovery(
         for resource in sku_resources[sku]:
             if resource["resource_type"] == "BACKUP_ASSEMBLY":
                 backup_uses[resource["resource_id"]].append((sku, resource))
+    # One scenario-dated, operator-confirmed ceiling can constrain every
+    # product that would use the same physical factory.
+    confirmed_caps = confirmed_capacity_for_scenario(
+        scenario_id=scenario_id, facility_ids=list(backup_uses),
+    )
     physical_caps = {}
+    cap_source = {}
     unverified = []
     for facility, uses in backup_uses.items():
         if facility in supplied_limits:
             physical_caps[facility] = supplied_limits[facility]
+            cap_source[facility] = "UNVERIFIED_CALLER_OVERRIDE"
+            if len({sku for sku, _ in uses}) > 1:
+                unverified.append(facility)
+        elif facility in confirmed_caps:
+            physical_caps[facility] = confirmed_caps[facility]["available_units"]
+            cap_source[facility] = "CONFIRMED_DATED_FACILITY_CAPACITY"
         else:
-            # Never add per-SKU reported availability as if it were independent.
+            # A per-SKU ceiling is not evidence of aggregate factory capacity.
             physical_caps[facility] = min(int(row["capacity_units"]) for _, row in uses)
+            cap_source[facility] = "CONSERVATIVE_PER_SKU_BOUND"
             if len({sku for sku, _ in uses}) > 1:
                 unverified.append(facility)
 
@@ -184,10 +198,8 @@ def optimize_joint_recovery(
         "status": status,
         "portfolio_allocation_verified": verified,
         "unverified_shared_capacity_facilities": sorted(unverified),
-        "capacity_limit_source": {
-            facility: "EXPLICIT_INPUT" if facility in supplied_limits else "CONSERVATIVE_PER_SKU_BOUND"
-            for facility in sorted(physical_caps)
-        },
+        "capacity_limit_source": {k:cap_source[k] for k in sorted(cap_source)},
+        "confirmed_capacity_evidence": confirmed_caps,
         "shared_facility_capacity": physical_caps,
         "shared_facility_allocated": dict(sorted(facility_used.items())),
         "demand_units": total_demand,

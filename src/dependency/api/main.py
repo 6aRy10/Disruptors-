@@ -24,6 +24,7 @@ from dependency.graph.exposure import facilities_within_radius
 from dependency.graph.event_impact import PHYSICAL_EVENT_TYPES, trace_business_event_impact
 from dependency.ingest.events import list_recent_events
 from dependency.services.capacity import confirm_supplier_capacity
+from dependency.services.facility_capacity import confirm_facility_capacity
 from dependency.services.supplier_outreach import (
     confirm_supplier_reply,
     create_capacity_confirmation_request,
@@ -111,6 +112,16 @@ app.mount(
     StaticFiles(directory=str(WEB_ROOT)),
     name="dashboard-assets",
 )
+
+
+class ConfirmFacilityWideCapacity(BaseModel):
+    week_start: str
+    valid_until: str
+    capacity_units: int = Field(ge=0)
+    committed_units: int = Field(ge=0)
+    evidence_source: str = Field(min_length=1)
+    evidence_reference: str = Field(min_length=1)
+    confirmed_by: str = Field(min_length=1)
 
 
 class SupplierReply(BaseModel):
@@ -668,6 +679,23 @@ async def slack_events(request: Request):
         source_message_id=event.get("ts"),
     )
     return {"ok": True, "result": result}
+
+
+@app.post("/facilities/{facility_id}/capacity-confirmations")
+def confirm_shared_factory_capacity(facility_id: str, body: ConfirmFacilityWideCapacity):
+    try:
+        return confirm_facility_capacity(
+            facility_id=facility_id,
+            week_start=body.week_start,
+            valid_until=body.valid_until,
+            capacity_units=body.capacity_units,
+            committed_units=body.committed_units,
+            evidence_source=body.evidence_source,
+            evidence_reference=body.evidence_reference,
+            confirmed_by=body.confirmed_by,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
 
 
 @app.post("/suppliers/capacity/parse")

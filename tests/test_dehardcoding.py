@@ -3,6 +3,7 @@ from pathlib import Path
 
 from dependency.db.connection import connect
 from dependency.incidents.triage import triage_event
+from dependency.graph.event_impact import trace_business_event_impact
 from dependency.solver.candidates import generate_recovery_candidates
 from dependency.solver.recovery import plan_sku_recovery
 
@@ -156,6 +157,112 @@ class DehardcodingTests(unittest.TestCase):
         self.assertIn("JQ6656", skus)
         self.assertEqual(result["scenario_id"], self.SCENARIO_ID)
         self.assertTrue(result["recovery_ready"])
+
+    def test_arbitrary_new_earthquake_reaches_generated_private_graph(self):
+        event_id = "TEST-ARBITRARY-SCALE-EARTHQUAKE"
+        with connect() as conn:
+            row = conn.execute(
+                """
+                SELECT f.facility_id,ST_X(f.geom::geometry),ST_Y(f.geom::geometry)
+                FROM facilities f
+                WHERE f.facility_id LIKE 'DTF-A-%'
+                  AND EXISTS (
+                    SELECT 1
+                    FROM product_facilities pf
+                    WHERE pf.facility_id=f.facility_id
+                      AND pf.sku LIKE 'DTSKU-%'
+                  )
+                ORDER BY f.facility_id
+                LIMIT 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(row)
+            facility_id, lon, lat = row
+            conn.execute(
+                """
+                INSERT INTO external_events(
+                  event_id,event_type,mode,source,title,
+                  occurred_or_effective_at,current_as_of,geom,raw_json,
+                  provenance_class
+                ) VALUES (
+                  %s,'earthquake','REPLAY','TEST',
+                  'Arbitrary scale-network earthquake',
+                  '2026-10-21T00:00:00Z','2026-10-21',
+                  ST_SetSRID(ST_MakePoint(%s,%s),4326)::geography,
+                  '{}'::jsonb,'SIMULATED_PRIVATE'
+                )
+                """,
+                (event_id, lon, lat),
+            )
+            expected = {
+                r[0]
+                for r in conn.execute(
+                    """
+                    SELECT sku
+                    FROM product_facilities
+                    WHERE facility_id=%s
+                      AND sku LIKE 'DTSKU-%'
+                    """,
+                    (facility_id,),
+                ).fetchall()
+            }
+            conn.commit()
+
+        try:
+            impact = trace_business_event_impact(
+                event_id=event_id,
+                radius_km=3,
+            )
+            impacted = {row["sku"] for row in impact["products"]}
+            self.assertTrue(expected)
+            self.assertTrue(expected & impacted)
+            self.assertTrue(
+                all(sku.startswith("DTSKU-") for sku in expected & impacted)
+            )
+        finally:
+            with connect() as conn:
+                conn.execute(
+                    "DELETE FROM external_events WHERE event_id=%s",
+                    (event_id,),
+                )
+                conn.commit()
+
+    def test_arbitrary_ocean_event_does_not_create_fake_business_impact(self):
+        event_id = "TEST-ARBITRARY-OCEAN-EARTHQUAKE"
+        with connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO external_events(
+                  event_id,event_type,mode,source,title,
+                  occurred_or_effective_at,current_as_of,geom,raw_json,
+                  provenance_class
+                ) VALUES (
+                  %s,'earthquake','REPLAY','TEST',
+                  'Ocean earthquake with no supply-network intersection',
+                  '2026-10-21T00:00:00Z','2026-10-21',
+                  ST_SetSRID(ST_MakePoint(-145,0),4326)::geography,
+                  '{}'::jsonb,'SIMULATED_PRIVATE'
+                )
+                """,
+                (event_id,),
+            )
+            conn.commit()
+
+        try:
+            result = triage_event(
+                event_id=event_id,
+                radius_km=25,
+            )
+            self.assertEqual(result["status"], "NO_NETWORK_EXPOSURE")
+            self.assertEqual(result["public_facility_count"], 0)
+            self.assertEqual(result["impacted_products"], [])
+        finally:
+            with connect() as conn:
+                conn.execute(
+                    "DELETE FROM external_events WHERE event_id=%s",
+                    (event_id,),
+                )
+                conn.commit()
 
     def test_generated_sku_uses_same_recovery_engine(self):
         plan = plan_sku_recovery(

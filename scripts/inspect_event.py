@@ -46,12 +46,25 @@ def inspect_event(event_id: str, *, radius_km: float = 150.0) -> dict:
             """,
             (event_id,),
         ).fetchone()
+        tasks = []
+        if incident:
+            tasks = conn.execute(
+                """
+                SELECT task_id,task_type,target_type,target_id,connected_skus
+                FROM incident_investigation_tasks
+                WHERE incident_id=%s AND status='OPEN'
+                ORDER BY connected_margin_eur DESC,created_at,task_id
+                LIMIT 20
+                """,
+                (incident[0],),
+            ).fetchall()
 
     impact = trace_business_event_impact(event_id=event_id, radius_km=radius_km)
     products = impact.get("products") or []
     paths = impact.get("dependency_paths") or []
     facilities = impact.get("facilities") or impact.get("public_facilities") or []
     return {
+        "status": "EVENT_INSPECTED",
         "event_id": event_id,
         "event": {
             "type": event[1],
@@ -70,6 +83,21 @@ def inspect_event(event_id: str, *, radius_km: float = 150.0) -> dict:
             "incident_id": incident[0], "status": incident[1],
             "scenario_id": incident[2],
         } if incident else None),
+        "investigation": {
+            "open_tasks_shown": len(tasks),
+            "limit": 20,
+            "tasks": [
+                {
+                    "task_id": r[0], "task_type": r[1],
+                    "target_type": r[2], "target_id": r[3],
+                    "connected_skus": r[4],
+                }
+                for r in tasks
+            ],
+            "interpretation": (
+                "Tasks request missing evidence; they do not confirm operational damage."
+            ),
+        },
         "business_exposure": {
             "basis": impact.get("exposure_basis"),
             "status": impact.get("exposure_status"),
@@ -96,7 +124,7 @@ def main() -> int:
         parser.error("radius-km must be positive")
     result = inspect_event(args.event_id, radius_km=args.radius_km)
     print(json.dumps(result, indent=2))
-    return 1 if result["status"] == "EVENT_NOT_FOUND" else 0
+    return 1 if result.get("status") == "EVENT_NOT_FOUND" else 0
 
 
 if __name__ == "__main__":

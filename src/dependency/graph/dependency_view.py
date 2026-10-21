@@ -171,14 +171,36 @@ def product_dependency_graph(sku: str) -> dict:
             facility_id=destination_id,
             provenance_class=row[8],
         )
-        add_edge(
-            f"source:{source_id}:{material_id}:{destination_id}:{sku}",
-            source_node,
-            material_node,
-            edge_type="SUPPLIES_MATERIAL",
-            destination_facility_id=destination_id,
-            allocation_share=float(row[7] or 0),
-            provenance_class=row[8],
+        # A single visible supplier/material relation can contain several
+        # destination-specific allocation rows. Keep every route in metadata.
+        # Drawing a line per destination would overlap at identical endpoints
+        # and falsely appear to be duplicate arrows.
+        supply_id = f"source:{source_id}:{material_id}:{sku}"
+        if supply_id not in edges:
+            add_edge(
+                supply_id,
+                source_node,
+                material_node,
+                edge_type="SUPPLIES_MATERIAL",
+                allocation_paths=[],
+                allocation_count=0,
+                destination_count=0,
+                provenance_class=row[8],
+            )
+        supply_edge = edges[supply_id]
+        supply_edge["allocation_paths"].append({
+            "destination_facility_id": destination_id,
+            "destination_facility_name": row[6],
+            "allocation_share": float(row[7] or 0),
+            "provenance_class": row[8],
+        })
+        supply_edge["allocation_count"] = len(supply_edge["allocation_paths"])
+        supply_edge["destination_count"] = len({
+            p["destination_facility_id"] for p in supply_edge["allocation_paths"]
+        })
+        supply_edge["route_label"] = (
+            f'{supply_edge["destination_count"]} routes'
+            if supply_edge["destination_count"] > 1 else ""
         )
         add_edge(
             f"material-flow:{material_id}:{destination_id}:{sku}",
@@ -247,12 +269,17 @@ def product_dependency_graph(sku: str) -> dict:
             "material_count": len(bom_rows),
             "assembly_facility_count": len(facility_rows),
             "explicit_allocation_count": len(allocation_rows),
+            "supplier_material_overview_edge_count": sum(
+                e["edge_type"] == "SUPPLIES_MATERIAL" for e in edges.values()
+            ),
             "commitment_count": len(commitment_rows),
             "shared_upstream_source_count": len(shared_sources),
         },
         "rule": (
             "Only stored explicit dependency edges are shown. Shared upstream "
             "sources are reported only when one source has explicit allocations "
-            "to multiple assembly facilities for this SKU."
+            "to multiple assembly facilities for this SKU. Supplier-to-material "
+            "arrows are grouped for display; allocation_paths preserves each "
+            "destination-specific modeled allocation."
         ),
     }

@@ -222,3 +222,61 @@ def incident_inbox(*, limit: int = 50) -> dict:
         "open_evidence_tasks":int(r[9]),
     } for r in rows],
     "truth_rule":"An open incident is not proof of supplier damage."}
+
+def event_context(*, event_id: str) -> dict:
+    """One event's location, incident and outstanding evidence work."""
+    with connect() as conn:
+        e=conn.execute(
+            """
+            SELECT event_id,event_type,source,mode,title,
+                   occurred_or_effective_at,source_url,provenance_class,
+                   CASE WHEN geom IS NOT NULL THEN
+                     ST_Y(ST_PointOnSurface(geom::geometry)) END,
+                   CASE WHEN geom IS NOT NULL THEN
+                     ST_X(ST_PointOnSurface(geom::geometry)) END
+            FROM external_events WHERE event_id=%s
+            """,
+            (event_id,),
+        ).fetchone()
+        if not e:
+            raise ValueError("Unknown event.")
+        incident=conn.execute(
+            """
+            SELECT incident_id,status,scenario_id
+            FROM incidents WHERE event_id=%s
+            ORDER BY detected_at DESC,incident_id LIMIT 1
+            """,
+            (event_id,),
+        ).fetchone()
+        tasks=[]
+        if incident:
+            tasks=conn.execute(
+                """
+                SELECT task_id,task_type,target_type,target_id,required_fact,
+                       connected_skus
+                FROM incident_investigation_tasks
+                WHERE incident_id=%s AND status='OPEN'
+                ORDER BY connected_margin_eur DESC,created_at LIMIT 50
+                """,
+                (incident[0],),
+            ).fetchall()
+    return {
+        "event":{
+            "event_id":e[0],"event_type":e[1],"source":e[2],"mode":e[3],
+            "title":e[4],
+            "occurred_at":e[5].isoformat() if e[5] else None,
+            "source_url":e[6],"provenance_class":e[7],
+            "latitude":float(e[8]) if e[8] is not None else None,
+            "longitude":float(e[9]) if e[9] is not None else None,
+        },
+        "incident":({
+            "incident_id":incident[0],"status":incident[1],
+            "scenario_id":incident[2],
+        } if incident else None),
+        "evidence_tasks":[{
+            "task_id":r[0],"task_type":r[1],"target_type":r[2],
+            "target_id":r[3],"required_fact":r[4],
+            "connected_skus":r[5],
+        } for r in tasks],
+        "claim_rule":"Public proximity is not confirmed operational damage.",
+    }

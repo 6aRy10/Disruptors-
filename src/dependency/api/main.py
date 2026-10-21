@@ -64,7 +64,7 @@ from dependency.solver.optimization import optimize_recovery_allocation
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
-from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox
+from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -333,6 +333,14 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.get("/app-data/events/{event_id}")
+def app_event_context(event_id: str):
+    try:
+        return event_context(event_id=event_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404,detail=str(exc)) from exc
 
 
 @app.get("/app-data/incidents")

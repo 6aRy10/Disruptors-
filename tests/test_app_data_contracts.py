@@ -2,7 +2,7 @@
 from datetime import date
 import unittest
 from unittest.mock import patch,MagicMock
-from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox
+from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox,event_context
 
 
 class AppDataContracts(unittest.TestCase):
@@ -72,6 +72,26 @@ class AppDataContracts(unittest.TestCase):
         self.assertEqual(inbox["incidents"][0]["open_evidence_tasks"],2)
         self.assertEqual(inbox["incidents"][0]["mode"],"LIVE")
         self.assertIn("not proof",inbox["truth_rule"])
+
+
+    @patch("dependency.graph.app_views.connect")
+    def test_event_context_preserves_exposure_uncertainty(self,connect):
+        conn=MagicMock()
+        from datetime import datetime,UTC
+        now=datetime.now(UTC)
+        conn.execute.side_effect=[
+            MagicMock(fetchone=lambda:("GDACS-ANY","wildfire","GDACS","LIVE",
+                  "Wildfire",now,"https://example.invalid","VERIFIED_PUBLIC",-7.0,112.0)),
+            MagicMock(fetchone=lambda:("INC-ANY","INVESTIGATING",None)),
+            MagicMock(fetchall=lambda:[("TASK-ANY","CONFIRM_FACILITY_STATUS",
+               "facility","FAC-ANY","Confirm status",["SKU-ANY"])]),
+        ]
+        connect.return_value.__enter__.return_value=conn
+        result=event_context(event_id="GDACS-ANY")
+        self.assertEqual(result["event"]["latitude"],-7.0)
+        self.assertEqual(result["evidence_tasks"][0]["target_id"],"FAC-ANY")
+        self.assertIsNone(result["incident"]["scenario_id"])
+        self.assertIn("not confirmed",result["claim_rule"])
 
 
 if __name__=="__main__":

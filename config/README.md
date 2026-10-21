@@ -22,6 +22,7 @@ Runtime data that the application loads:
 - `transport_lanes.csv` — private route assignments.
 - `scenarios.csv` and `scenario_facility_state.csv` — replay operational state.
 - `historical_event.json` — the real USGS Cianjur event fixture.
+- `external_event_fixtures.csv` — clean public-event facts/context for the secondary port and trade-policy engines. It contains no precomputed risk or impact outputs.
 - `contacts.csv` — simulated private operational contacts.
 - `incident_memory_seed.csv` — clearly labelled simulated prior-run memory.
 

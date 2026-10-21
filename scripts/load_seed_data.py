@@ -486,7 +486,7 @@ def load() -> None:
         # Load additional verified public replay/policy events used by the
         # non-geospatial exposure engines. Cianjur keeps the richer USGS payload
         # from historical_event.json above.
-        for r in read_csv("risk_events.csv"):
+        for r in read_csv("external_event_fixtures.csv"):
             if r["event_id"] == event["event_id"]:
                 continue
 

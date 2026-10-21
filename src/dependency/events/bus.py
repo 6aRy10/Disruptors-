@@ -68,6 +68,21 @@ def pending(limit: int = 100) -> list[dict]:
     ]
 
 
+def build_event_envelope(row: dict) -> dict:
+    """Create the transport envelope used by Kafka consumers.
+
+    The outbox_id is preserved so downstream consumers can apply the same
+    idempotency rule as the local PostgreSQL worker.
+    """
+    return {
+        "outbox_id": row["outbox_id"],
+        "topic": row["topic"],
+        "event_key": row["event_key"],
+        "payload": row["payload"],
+        "created_at": row.get("created_at"),
+    }
+
+
 def _kafka_config() -> dict:
     brokers = os.getenv("AIVEN_KAFKA_BROKERS", "").strip()
     if not brokers:
@@ -129,7 +144,10 @@ def flush_to_kafka(limit: int = 100) -> dict:
         producer.produce(
             row["topic"],
             key=row["event_key"].encode("utf-8"),
-            value=json.dumps(row["payload"], default=str).encode("utf-8"),
+            value=json.dumps(
+                build_event_envelope(row),
+                default=str,
+            ).encode("utf-8"),
             callback=lambda err, msg, oid=row["outbox_id"]: delivery(err, msg, oid),
         )
 

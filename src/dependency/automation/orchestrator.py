@@ -27,6 +27,7 @@ def pending_events(
             LEFT JOIN event_consumptions c
               ON c.consumer_name=%s
              AND c.outbox_id=o.outbox_id
+             AND c.status='SUCCESS'
             WHERE c.outbox_id IS NULL
             ORDER BY o.created_at,o.outbox_id
             LIMIT %s
@@ -282,6 +283,83 @@ def _record_consumption(
         conn.commit()
 
 
+def consumption_status(
+    *,
+    consumer_name: str,
+    outbox_id: str,
+) -> str | None:
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT status
+            FROM event_consumptions
+            WHERE consumer_name=%s AND outbox_id=%s
+            """,
+            (consumer_name, outbox_id),
+        ).fetchone()
+    return row[0] if row else None
+
+
+def process_event_envelope(
+    *,
+    consumer_name: str,
+    outbox_id: str,
+    topic: str,
+    payload: dict,
+    run_agents: bool = False,
+    radius_km: float = 150.0,
+) -> dict:
+    """Idempotently process one transported outbox event.
+
+    Both the local PostgreSQL worker and the Aiven Kafka consumer use this
+    function. A successful outbox_id is never applied twice by the same
+    consumer.
+    """
+    if consumption_status(
+        consumer_name=consumer_name,
+        outbox_id=outbox_id,
+    ) == "SUCCESS":
+        return {
+            "outbox_id": outbox_id,
+            "topic": topic,
+            "status": "DUPLICATE_SKIPPED",
+        }
+
+    try:
+        result = handle_event(
+            topic=topic,
+            payload=payload,
+            run_agents=run_agents,
+            radius_km=radius_km,
+        )
+        _record_consumption(
+            consumer_name=consumer_name,
+            outbox_id=outbox_id,
+            status="SUCCESS",
+            result=result,
+        )
+        return {
+            "outbox_id": outbox_id,
+            "topic": topic,
+            "status": "SUCCESS",
+            "result": result,
+        }
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        _record_consumption(
+            consumer_name=consumer_name,
+            outbox_id=outbox_id,
+            status="ERROR",
+            error=error,
+        )
+        return {
+            "outbox_id": outbox_id,
+            "topic": topic,
+            "status": "ERROR",
+            "error": error,
+        }
+
+
 def process_pending_events(
     *,
     consumer_name: str = DEFAULT_CONSUMER,
@@ -296,42 +374,16 @@ def process_pending_events(
 
     results: list[dict[str, Any]] = []
     for row in rows:
-        try:
-            result = handle_event(
+        results.append(
+            process_event_envelope(
+                consumer_name=consumer_name,
+                outbox_id=row["outbox_id"],
                 topic=row["topic"],
                 payload=row["payload"],
                 run_agents=run_agents,
                 radius_km=radius_km,
             )
-            _record_consumption(
-                consumer_name=consumer_name,
-                outbox_id=row["outbox_id"],
-                status="SUCCESS",
-                result=result,
-            )
-            results.append(
-                {
-                    "outbox_id": row["outbox_id"],
-                    "topic": row["topic"],
-                    "status": "SUCCESS",
-                    "result": result,
-                }
-            )
-        except Exception as exc:
-            _record_consumption(
-                consumer_name=consumer_name,
-                outbox_id=row["outbox_id"],
-                status="ERROR",
-                error=f"{type(exc).__name__}: {exc}",
-            )
-            results.append(
-                {
-                    "outbox_id": row["outbox_id"],
-                    "topic": row["topic"],
-                    "status": "ERROR",
-                    "error": f"{type(exc).__name__}: {exc}",
-                }
-            )
+        )
 
     return {
         "consumer_name": consumer_name,

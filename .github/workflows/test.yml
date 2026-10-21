@@ -98,6 +98,9 @@ jobs:
       - name: Test transactional event bus
         run: python -m unittest tests.test_event_bus -v
 
+      - name: Test Aiven Kafka transport contract
+        run: python -m unittest tests.test_kafka_contract -v
+
       - name: Test judge-editable operational state
         run: python -m unittest tests.test_judge_edits -v
 

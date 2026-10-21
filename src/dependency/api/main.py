@@ -64,7 +64,7 @@ from dependency.solver.optimization import optimize_recovery_allocation
 from dependency.graph.shared_dependencies import backup_independence
 from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
-from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context
+from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -346,6 +346,14 @@ def app_event_context(event_id: str):
 @app.get("/app-data/incidents")
 def app_incident_inbox(limit: int = Query(default=50,ge=1,le=200)):
     return incident_inbox(limit=limit)
+
+
+@app.get("/app-data/map/hazards")
+def app_map_hazard_reports(
+    days: int = Query(default=90,ge=1,le=3650),
+    limit: int = Query(default=350,ge=1,le=1000),
+):
+    return map_hazard_reports(days=days,limit=limit)
 
 
 @app.get("/app-data/map/facilities")

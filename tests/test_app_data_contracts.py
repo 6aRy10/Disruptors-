@@ -2,7 +2,7 @@
 from datetime import date
 import unittest
 from unittest.mock import patch,MagicMock
-from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox,event_context
+from dependency.graph.app_views import map_facilities,facility_profile,incident_inbox,event_context,map_hazard_reports
 
 
 class AppDataContracts(unittest.TestCase):
@@ -94,6 +94,30 @@ class AppDataContracts(unittest.TestCase):
         self.assertEqual(result["evidence_tasks"][0]["target_id"],"FAC-ANY")
         self.assertIsNone(result["incident"]["scenario_id"])
         self.assertIn("not confirmed",result["claim_rule"])
+
+
+    @patch("dependency.graph.app_views.connect")
+    def test_report_map_preserves_real_point_and_date(self,connect):
+        from datetime import datetime,timezone
+        now=datetime.now(timezone.utc)
+        db=MagicMock()
+        db.execute.return_value.fetchall.return_value=[(
+            "GDACS-DYNAMIC","wildfire","GDACS","Forest fires in Indonesia",
+            "LIVE",now,"https://example.invalid","VERIFIED_PUBLIC",
+            '{"type":"Point","coordinates":[112.0,-7.0]}',112.0,-7.0,
+        )]
+        connect.return_value.__enter__.return_value=db
+        result=map_hazard_reports(days=30)
+        self.assertEqual(result["shown"],1)
+        self.assertEqual(result["features"][0]["geometry"]["type"],"Point")
+        self.assertEqual(result["features"][0]["properties"]["event_id"],"GDACS-DYNAMIC")
+        self.assertIn("no invented hazard radius",result["geometry_rule"])
+
+    def test_report_map_rejects_unbounded_queries(self):
+        with self.assertRaises(ValueError):
+            map_hazard_reports(limit=100000)
+        with self.assertRaises(ValueError):
+            map_hazard_reports(days=0)
 
 
 if __name__=="__main__":

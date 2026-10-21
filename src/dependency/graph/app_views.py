@@ -192,6 +192,65 @@ def facility_profile(*, network_facility_id: str, max_products: int = 25) -> dic
         ),
     }
 
+def map_hazard_reports(*, days: int = 90, limit: int = 350) -> dict:
+    """Map genuine stored event geometry, not a fabricated impact radius.
+
+    The geometry is a source observation. An orange report marker does not
+    indicate an active storm, confirmed supplier damage, or business loss.
+    """
+    if not 1 <= days <= 3650:
+        raise ValueError("days must be between 1 and 3650.")
+    if not 1 <= limit <= 1000:
+        raise ValueError("limit must be between 1 and 1000.")
+    with connect() as conn:
+        rows=conn.execute(
+            """
+            SELECT event_id,event_type,source,title,mode,
+                   occurred_or_effective_at,source_url,provenance_class,
+                   ST_AsGeoJSON(geom::geometry),
+                   ST_X(ST_PointOnSurface(geom::geometry)),
+                   ST_Y(ST_PointOnSurface(geom::geometry))
+            FROM external_events
+            WHERE geom IS NOT NULL
+              AND mode='LIVE'
+              AND event_type IN (
+                'earthquake','flood','wildfire','tropical_cyclone','volcano',
+                'port_disruption','port_activity_anomaly'
+              )
+              AND occurred_or_effective_at >= now() - (%s * interval '1 day')
+              AND occurred_or_effective_at <= now() + interval '2 day'
+            ORDER BY occurred_or_effective_at DESC,event_id
+            LIMIT %s
+            """,
+            (days,limit),
+        ).fetchall()
+    import json
+    features=[]
+    for r in rows:
+        geometry=json.loads(r[8])
+        features.append({
+            "type":"Feature",
+            "geometry":geometry,
+            "properties":{
+                "event_id":r[0],"event_type":r[1],"source":r[2],
+                "title":r[3],"mode":r[4],
+                "occurred_at":r[5].isoformat() if r[5] else None,
+                "source_url":r[6],"provenance_class":r[7],
+                "geometry_type":geometry["type"],
+                "longitude":float(r[9]),"latitude":float(r[10]),
+            },
+        })
+    return {
+        "type":"FeatureCollection","features":features,
+        "days":days,"shown":len(features),"limit":limit,
+        "geometry_rule":(
+            "Orange means the source reported a hazard here and then. "
+            "It does not prove ongoing activity, damage or loss. "
+            "Only stored source geometry is drawn; no invented hazard radius."
+        ),
+    }
+
+
 def incident_inbox(*, limit: int = 50) -> dict:
     """List real unresolved incidents and outstanding tasks for first-session focus."""
     if not 1 <= limit <= 200:

@@ -12,6 +12,7 @@ from math import floor
 from dependency.solver.optimization import _MinCostFlow, _orders, _resource_candidates
 from dependency.services.facility_capacity import confirmed_capacity_for_scenario
 from dependency.solver.material_contention import evaluate_material_contention
+from dependency.solver.material_allocation import allocate_shared_materials
 
 
 def optimize_joint_recovery(
@@ -178,6 +179,10 @@ def optimize_joint_recovery(
             "resource_id": resource["resource_id"],
             "resource_type": resource["resource_type"],
             "units": int(used),
+            "priority": int(order["priority"]),
+            "unit_margin_eur": float(order["unit_margin_eur"]),
+            "unit_revenue_eur": float(order["unit_revenue_eur"]),
+            "transport_cost_eur_per_unit": (float(lane["cost_eur_per_unit"]) if lane else 0.0),
             "provisional": bool(resource["provisional"]),
             "requires_approval": bool(resource["requires_approval"]),
             "transport": lane,
@@ -189,8 +194,11 @@ def optimize_joint_recovery(
     # Report modeled upstream conflicts; do not silently call the resulting
     # allocation physically executable.
     material_audit = evaluate_material_contention(allocations=selected)
+    material_plan = allocate_shared_materials(allocations=selected)
     protected = sum(protected_by_sku.values())
     status = (
+        "MODELED_MATERIAL_CAPACITY_SHORTFALL"
+        if material_plan["material_reduced_units"] else
         "MODELED_SHARED_MATERIAL_SHORTFALL"
         if material_audit["modeled_capacity_conflicts"] else
         "SHORTAGE" if protected < total_demand else
@@ -204,6 +212,7 @@ def optimize_joint_recovery(
         not unverified and not unverified_override_facilities
         and not provisional_used and not approvals_needed
         and material_audit["execution_materials_verified"]
+        and material_plan["execution_materials_verified"]
     )
     return {
         "scenario_id": scenario_id,
@@ -211,7 +220,10 @@ def optimize_joint_recovery(
         "skus": skus,
         "solver": "JOINT_DETERMINISTIC_MIN_COST_FLOW",
         "shared_material_audit": material_audit,
-        "material_capacity_validated": material_audit["execution_materials_verified"],
+        "material_constrained_allocation": material_plan,
+        "material_feasible_units": material_plan["material_feasible_units"],
+        "material_reduced_units": material_plan["material_reduced_units"],
+        "material_capacity_validated": material_plan["execution_materials_verified"],
         "executable_as_proposed": verified and protected == total_demand,
         "status": status,
         "portfolio_allocation_verified": verified,
@@ -231,7 +243,8 @@ def optimize_joint_recovery(
         "allocations": sorted(selected, key=lambda x: (x["sku"], x["order_id"], x["resource_id"])),
         "assumption": (
             "Factory ceilings are jointly constrained; modeled shared-material "
-            "capacity is audited, not jointly optimized. Confirmed material source "
-            "quantities and human approval are required before execution."
+            "capacity is now conservatively repaired after factory allocation. "
+            "It is not a globally optimal material/factory solution. Confirmed "
+            "supplier quantities, arrival dates and approval remain required."
         ),
     }

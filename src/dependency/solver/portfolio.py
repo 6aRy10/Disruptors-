@@ -272,6 +272,12 @@ def plan_event_recovery(
     else:
         portfolio_status = "FEASIBLE"
 
+    # A modeled material shortage cannot become a feasible operational plan.
+    if joint_allocation and joint_allocation["material_reduced_units"]:
+        portfolio_status = "MODELED_MATERIAL_CAPACITY_SHORTFALL"
+    elif joint_allocation and not joint_allocation["portfolio_allocation_verified"] and portfolio_status == "FEASIBLE":
+        portfolio_status = "PROVISIONAL"
+
     shared_capacity_validation_required = bool(
         joint_allocation
         and joint_allocation["unverified_shared_capacity_facilities"]
@@ -309,6 +315,12 @@ def plan_event_recovery(
                 optimized_protected_margin - optimized_transport_cost,
                 2,
             ),
+            "joint_material_feasible_units": (
+                joint_allocation["material_feasible_units"] if joint_allocation else None
+            ),
+            "joint_material_reduced_units": (
+                joint_allocation["material_reduced_units"] if joint_allocation else None
+            ),
             "joint_protected_units": (
                 joint_allocation["protected_units"] if joint_allocation else None
             ),
@@ -337,8 +349,8 @@ def plan_event_recovery(
         "shared_capacity_validation_required": shared_capacity_validation_required,
         "portfolio_allocation_verified": portfolio_allocation_verified,
         "portfolio_allocation_claim": (
-            "Joint recovery uses one shared physical-capacity cap per backup. "
-            "The cap still needs facility-wide confirmation before execution."
+            "Joint recovery constrains shared factory capacity and repairs modeled "
+            "material over-allocation. Both require independent evidence before execution."
             if joint_allocation is not None and not portfolio_allocation_verified
             else "Joint allocation respects explicit physical-capacity limits."
             if joint_allocation is not None

@@ -25,7 +25,8 @@ def _source(label: str, path: str, provenance: str) -> dict:
 
 
 def answer_expeditor(*, question: str, event_id: str | None = None,
-                     sku: str | None = None, facility_id: str | None = None) -> dict:
+                     sku: str | None = None, facility_id: str | None = None,
+                     object_id: str | None = None) -> dict:
     question = question.strip()
     if not 2 <= len(question) <= 1000:
         raise ValueError("Question must contain 2 to 1000 characters.")
@@ -71,8 +72,16 @@ def answer_expeditor(*, question: str, event_id: str | None = None,
         }
         sources.append(_source("Facility profile", "/app-data/facilities/" + facility_id, "VERIFIED_PUBLIC + SIMULATED_PRIVATE"))
 
-    if selected_sku and (asks_graph or (not asks_incident and not asks_recovery)):
+    if selected_sku and (asks_graph or object_id or (not asks_incident and not asks_recovery)):
         graph = product_dependency_graph(sku=selected_sku)
+        focused = next((n for n in graph["nodes"] if n["id"] == object_id), None)
+        if focused:
+            related = [e for e in graph["edges"] if e["source"] == object_id or e["target"] == object_id]
+            related_ids = {e["source"] for e in related} | {e["target"] for e in related}
+            context["focused_object"] = {
+                "node": focused, "relationships": related[:60],
+                "neighbors": [n for n in graph["nodes"] if n["id"] in related_ids][:60],
+            }
         context["graph"] = {
             "sku": selected_sku, "summary": graph["summary"],
             "nodes": graph["nodes"][:160], "edges": graph["edges"][:220],
@@ -150,6 +159,14 @@ def answer_expeditor(*, question: str, event_id: str | None = None,
                 f"{t.get('commitment_units', 0):,.0f} committed units, "
                 f"EUR {t.get('revenue_eur', 0):,.0f} potential revenue exposure. "
                 "These are not confirmed losses.")
+        focused = context.get("focused_object")
+        if focused:
+            node = focused["node"]
+            lines.append(f"Selected object: {node.get('label', node['id'])}; "
+                         f"{len(focused['relationships'])} stored relationships.")
+            if focused["neighbors"]:
+                lines.append("Connected to: " + "; ".join(
+                    str(n.get("label", n["id"])) for n in focused["neighbors"][:10]) + ".")
         graph = context.get("graph") or {}
         if graph:
             summary = graph["summary"]

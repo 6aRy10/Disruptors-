@@ -115,6 +115,9 @@ CREATE TABLE IF NOT EXISTS facility_network_links (
   provenance_class text NOT NULL,
   PRIMARY KEY(facility_id, network_facility_id)
 );
+CREATE INDEX IF NOT EXISTS facility_network_links_network_idx
+  ON facility_network_links(network_facility_id, facility_id);
+
 
 CREATE TABLE IF NOT EXISTS operational_contacts (
   contact_id text PRIMARY KEY,

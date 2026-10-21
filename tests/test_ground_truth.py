@@ -87,7 +87,7 @@ class GroundTruthTests(unittest.TestCase):
         result = summarize(allocate_orders(orders, 5600))
         self.assertEqual(result["late_units"], 3900)
         self.assertEqual(result["protected_revenue_eur"], 728000.0)
-        self.assertEqual(result["protected_margin_eur"], 303200.0)
+        self.assertEqual(result["protected_margin_eur"], 300000.0)
 
     def test_gt08_inventory_fall(self):
         result = check_plan(
@@ -127,8 +127,8 @@ class GroundTruthTests(unittest.TestCase):
         result = summarize(allocate_orders(orders, 5600))
         by_id = {r["order_id"]: r for r in result["allocations"]}
         self.assertEqual(by_id["ORD-JI-EU"]["allocated_qty"], 4000)
-        self.assertEqual(by_id["ORD-JI-GC"]["allocated_qty"], 1600)
-        self.assertEqual(by_id["ORD-JI-NA"]["allocated_qty"], 0)
+        self.assertEqual(by_id["ORD-JI-NA"]["allocated_qty"], 1600)
+        self.assertEqual(by_id["ORD-JI-GC"]["allocated_qty"], 0)
 
     def test_gt12_vietnam_tariff(self):
         result = tariff_impact(

@@ -58,6 +58,41 @@ def read_activity(*, limit: int = 80, since: datetime | None = None,
         rows=conn.execute(STREAM_SQL,(since,since,source,source,limit)).fetchall()
         sources=conn.execute(SOURCE_SQL).fetchall()
         queue=conn.execute(QUEUE_SQL).fetchone()
+        present=conn.execute("SELECT to_regclass(%s)",("public.collector_checks",)).fetchone()
+        checks=(conn.execute("""
+            SELECT DISTINCT ON (source) source,checked_at,status,
+                   received_count,created_count,error_type
+            FROM collector_checks ORDER BY source,checked_at DESC,check_id DESC
+        """).fetchall() if present and present[0] is not None else [])
+    check_by_source={row[0]:row for row in checks}
+    now=datetime.now(timezone.utc)
+    source_by_name={row[0]:row for row in sources}
+    names=sorted(set(source_by_name)|set(check_by_source)|{"USGS","GDACS","PORTWATCH"})
+    source_view=[]
+    for name in names:
+        stored=source_by_name.get(name)
+        checked=check_by_source.get(name)
+        age_seconds=(now-checked[1]).total_seconds() if checked and checked[1] else None
+        threshold={"USGS":300,"GDACS":1200,"PORTWATCH":10800}.get(name,1200)
+        if not checked:
+            poll_status="NOT_VERIFIED"
+        elif age_seconds is None or age_seconds>threshold:
+            poll_status="STALE"
+        elif checked[2]=="ERROR":
+            poll_status="RECENT_ERROR"
+        else:
+            poll_status="RECENT_SUCCESS"
+        source_view.append({
+            "source":name,
+            "stored_report_count":int(stored[1]) if stored else 0,
+            "last_database_ingestion_at":stored[2].isoformat() if stored and stored[2] else None,
+            "last_source_event_at":stored[3].isoformat() if stored and stored[3] else None,
+            "collector_status":poll_status,
+            "last_poll_at":checked[1].isoformat() if checked and checked[1] else None,
+            "last_poll_received_count":int(checked[3]) if checked else None,
+            "last_poll_created_count":int(checked[4]) if checked else None,
+            "last_poll_error_type":checked[5] if checked else None,
+        })
     entries=[{
         'entry_id':r[0], 'event_id':r[1], 'source':r[2], 'event_type':r[3],
         'title':r[4], 'mode':r[5],
@@ -71,14 +106,9 @@ def read_activity(*, limit: int = 80, since: datetime | None = None,
         'signal_class':'SOURCE_OBSERVATION',
     } for r in rows]
     return {
-        'server_time':datetime.now(timezone.utc).isoformat(),
+        'server_time':now.isoformat(),
         'entries':entries,'returned_count':len(entries),'limit':limit,
-        'sources':[{
-            'source':r[0],'stored_report_count':int(r[1]),
-            'last_database_ingestion_at':r[2].isoformat() if r[2] else None,
-            'last_source_event_at':r[3].isoformat() if r[3] else None,
-            'collector_status':'NOT_VERIFIED',
-        } for r in sources],
+        'sources':source_view,
         'processing':{
             'pending_local_outbox_messages':int(queue[0] or 0),
             'unpublished_kafka_outbox_messages':int(queue[1] or 0),
@@ -87,7 +117,7 @@ def read_activity(*, limit: int = 80, since: datetime | None = None,
         'refresh_contract':'HTTP_POLL_READ_ONLY',
         'freshness_rule':(
             'first_recorded_at is outbox creation, not the hazard date. '
-            'Repeat source polls do not create another entry. Recent ingestion '
-            'does not prove that a collector is currently running.'
+            'Repeat source polls do not create another entry. Source poll status '
+            'is backed by collector_checks; missing or stale polls are not called live.'
         ),
     }

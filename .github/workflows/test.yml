@@ -312,6 +312,9 @@ jobs:
       - name: Test shared upstream material contention
         run: python -m unittest tests.test_material_contention -v
 
+      - name: Test mission supervisor recovery challenger and evidence gates
+        run: python -m unittest tests.test_mission_controller -v
+
       - name: Prevent false supplier-to-order routing claims
         run: python -m unittest tests.test_expeditor_route_truth -v
 

@@ -113,6 +113,13 @@ def create_capacity_confirmation_request(
             current_capacity=current_capacity,
             facility_name=facility[0],
         )["text"]
+        # This repository ships modeled ERP/supplier identities rather than
+        # authorized Adidas operational contacts. Make any opt-in Slack
+        # rehearsal impossible to misread as a live purchase order.
+        message = (
+            "[HERMES DEMO — SIMULATED SUPPLY DATA; NOT A REAL ORDER]\\n"
+            + message
+        )
 
         request_id = f"REQ-CAP-{uuid4()}"
         status = "PENDING_DISPATCH" if contact else "DRAFT"

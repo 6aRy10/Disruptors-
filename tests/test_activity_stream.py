@@ -60,7 +60,7 @@ class SourceActivityContract(unittest.TestCase):
         self.assertEqual(states["GDACS"]["collector_status"],"RECENT_SUCCESS")
         self.assertEqual(states["GDACS"]["last_poll_created_count"],1)
         self.assertEqual(states["USGS"]["collector_status"],"STALE")
-        self.assertEqual(states["PORTWATCH"]["collector_status"],"NOT_VERIFIED")
+        self.assertEqual(states["IMF PortWatch"]["collector_status"],"NOT_VERIFIED")
 
     def test_old_database_without_migration_returns_not_verified(self):
         db=Connection(migrated=False)

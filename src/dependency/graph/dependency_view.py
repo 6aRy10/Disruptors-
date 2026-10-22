@@ -235,6 +235,29 @@ def product_dependency_graph(sku: str) -> dict:
             provenance_class=row[8],
         )
 
+    # Every route is an approved, destination-specific MODELED allocation.
+    # Never infer that one supplier can serve every factory that uses this
+    # material. The shared MATERIAL node is an overview, not a transport edge.
+    bom_per_unit = {row[0]: float(row[3]) for row in bom_rows}
+    allocation_routes = [
+        {
+            "sku": sku,
+            "source_facility_id": row[1],
+            "source_facility_name": row[2],
+            "material_id": row[0],
+            "material_name": material_names.get(row[0], row[0]),
+            "destination_facility_id": row[5],
+            "destination_facility_name": row[6],
+            "allocation_share": float(row[7] or 0),
+            "bom_quantity_per_sku": bom_per_unit.get(row[0]),
+            "approved_in_model": True,
+            "provenance_class": row[8],
+            "supplier_quantity_confirmed": False,
+            "shipment_or_customer_order_assignment_confirmed": False,
+        }
+        for row in allocation_rows
+    ]
+
     source_destinations: dict[str, set[str]] = {}
     for row in allocation_rows:
         key = row[1]
@@ -263,12 +286,14 @@ def product_dependency_graph(sku: str) -> dict:
         "nodes": list(nodes.values()),
         "edges": list(edges.values()),
         "shared_upstream_sources": shared_sources,
+        "allocation_routes": allocation_routes,
         "summary": {
             "node_count": len(nodes),
             "edge_count": len(edges),
             "material_count": len(bom_rows),
             "assembly_facility_count": len(facility_rows),
             "explicit_allocation_count": len(allocation_rows),
+            "qualified_route_count": len(allocation_routes),
             "supplier_material_overview_edge_count": sum(
                 e["edge_type"] == "SUPPLIES_MATERIAL" for e in edges.values()
             ),
@@ -280,6 +305,9 @@ def product_dependency_graph(sku: str) -> dict:
             "sources are reported only when one source has explicit allocations "
             "to multiple assembly facilities for this SKU. Supplier-to-material "
             "arrows are grouped for display; allocation_paths preserves each "
-            "destination-specific modeled allocation."
+            "destination-specific modeled allocation. The allocation_routes list "
+            "is the source of destination-qualified paths; a common material "
+            "node does not imply interchangeability. Customer orders are SKU "
+            "commitments, not yet assigned to these supplier routes."
         ),
     }

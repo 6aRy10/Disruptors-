@@ -66,7 +66,12 @@ def read_activity(*, limit: int = 80, since: datetime | None = None,
         """).fetchall() if present and present[0] is not None else [])
     check_by_source={row[0]:row for row in checks}
     now=datetime.now(timezone.utc)
-    source_by_name={row[0]:row for row in sources}
+    # PortWatch's public source attribution differs from its worker name.
+    def source_key(label: str) -> str:
+        return "PORTWATCH" if label.strip().lower() in {
+            "imf portwatch", "portwatch"
+        } else label
+    source_by_name={source_key(row[0]):row for row in sources}
     names=sorted(set(source_by_name)|set(check_by_source)|{"USGS","GDACS","PORTWATCH"})
     source_view=[]
     for name in names:
@@ -83,7 +88,7 @@ def read_activity(*, limit: int = 80, since: datetime | None = None,
         else:
             poll_status="RECENT_SUCCESS"
         source_view.append({
-            "source":name,
+            "source":"IMF PortWatch" if name=="PORTWATCH" else name,
             "stored_report_count":int(stored[1]) if stored else 0,
             "last_database_ingestion_at":stored[2].isoformat() if stored and stored[2] else None,
             "last_source_event_at":stored[3].isoformat() if stored and stored[3] else None,

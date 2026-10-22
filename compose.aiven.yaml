@@ -1,0 +1,51 @@
+# Aiven Runtime manifest. Three applications are built from the same Dockerfile.
+#
+# Data services are NOT declared here on purpose: the production Aiven
+# PostgreSQL already holds the loaded twin and must not be re-created. Attach
+# the existing PostgreSQL and Kafka services after deployment with
+# `avn service integration-create` (exact commands in
+# docs/AIVEN_KAFKA_RUNTIME_DEPLOYMENT.md). The integrations inject:
+#   AIVEN_DATABASE_URL                       (custom variable name, PostgreSQL)
+#   KAFKA_BOOTSTRAP_SERVERS, KAFKA_SECURITY_PROTOCOL=SSL,
+#   KAFKA_ACCESS_KEY, KAFKA_ACCESS_CERT, KAFKA_CA_CERT   (inline PEM, Kafka)
+# which dependency.events.kafka_settings reads directly; no files on disk.
+#
+# Non-secret settings live below; secrets (DEPENDENCY_WRITE_TOKEN, OPENAI_API_KEY,
+# SLACK_*) are added as Runtime environment variables in the console, never here.
+
+services:
+  hermes-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      HERMES_ROLE: api
+      PORT: "8000"
+      DEPENDENCY_DATABASE_TARGET: aiven
+      AIVEN_KAFKA_ROUTING_MODE: single
+      AIVEN_KAFKA_PHYSICAL_TOPIC: dependency.events
+
+  hermes-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      HERMES_ROLE: publisher
+      DEPENDENCY_DATABASE_TARGET: aiven
+      AIVEN_KAFKA_ROUTING_MODE: single
+      AIVEN_KAFKA_PHYSICAL_TOPIC: dependency.events
+      HERMES_PUBLISHER_INTERVAL_SECONDS: "2"
+
+  # Deploy exactly one consumer instance.
+  hermes-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      HERMES_ROLE: consumer
+      DEPENDENCY_DATABASE_TARGET: aiven
+      AIVEN_KAFKA_ROUTING_MODE: single
+      AIVEN_KAFKA_PHYSICAL_TOPIC: dependency.events
+      AIVEN_KAFKA_CONSUMER_GROUP: dependency-incident-orchestrator

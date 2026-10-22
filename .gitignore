@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+certs/
+*.pem
+*.cert
+*.key
 
 # Python
 .venv/
@@ -25,3 +29,6 @@ build/
 # Deterministic generated enterprise-scale private twin
 data/generated/private_twin/*.csv
 data/generated/private_twin/manifest.json
+
+# Worker heartbeat files
+run/

@@ -118,6 +118,13 @@ Only paid Kafka clusters with enough topic quota should use optional
 
 https://aiven.io/docs/products/kafka/free-tier/kafka-free-tier
 
+## Containers, health checks and Aiven Runtime
+
+See `docs/AIVEN_KAFKA_RUNTIME_DEPLOYMENT.md` for the Docker image
+(`Dockerfile`, `compose.yaml`, `compose.aiven.yaml`), the publisher/consumer
+worker roles, `/health/live`, `/health/ready`, `/health/kafka`, and the
+end-to-end `scripts/verify_kafka_roundtrip.py --publish` broker check.
+
 ## Read-only live Kafka readiness check
 
 After configuring TLS privately and creating the `dependency.events` topic

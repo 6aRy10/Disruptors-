@@ -1,0 +1,25 @@
+# Secrets and credentials must never enter the image or build context.
+.env
+.env.*
+!.env.example
+*.pem
+*.cert
+*.key
+*.crt
+certs/
+
+.git
+.github
+.venv*/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/
+*.log
+dist/
+build/
+docs/
+tests/
+README.md

@@ -103,47 +103,70 @@ def build_event_envelope(row: dict) -> dict:
     }
 
 
-def _kafka_config() -> dict:
-    brokers = os.getenv("AIVEN_KAFKA_BROKERS", "").strip()
-    if not brokers:
-        raise RuntimeError("AIVEN_KAFKA_BROKERS is not configured.")
+def outbox_exists(outbox_id: str) -> bool:
+    """True when this database owns the event; consumers must not apply foreign events."""
+    with connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM event_outbox WHERE outbox_id=%s", (outbox_id,)
+        ).fetchone() is not None
 
-    config = {
-        "bootstrap.servers": brokers,
-        "client.id": os.getenv("AIVEN_KAFKA_CLIENT_ID", "disruptors-dependency"),
-        "security.protocol": os.getenv("AIVEN_KAFKA_SECURITY_PROTOCOL", "SSL"),
+
+def outbox_backlog() -> dict:
+    """Read-only outbox statistics used by health checks; no secrets involved."""
+    with connect() as conn:
+        pending_count, oldest_age, retrying = conn.execute(
+            """
+            SELECT COUNT(*),
+                   EXTRACT(EPOCH FROM (now()-MIN(created_at))),
+                   COUNT(*) FILTER (WHERE attempts>0)
+            FROM event_outbox
+            WHERE published_at IS NULL
+            """
+        ).fetchone()
+        published_last_hour = conn.execute(
+            """
+            SELECT COUNT(*) FROM event_outbox
+            WHERE published_at IS NOT NULL AND published_at>now()-interval '1 hour'
+            """
+        ).fetchone()[0]
+    return {
+        "pending": int(pending_count),
+        "pending_with_failed_attempts": int(retrying),
+        "oldest_pending_age_seconds": (
+            round(float(oldest_age), 1) if oldest_age is not None else None
+        ),
+        "published_last_hour": int(published_last_hour),
     }
 
-    ca = os.getenv("AIVEN_KAFKA_CA_FILE")
-    cert = os.getenv("AIVEN_KAFKA_CERT_FILE")
-    key = os.getenv("AIVEN_KAFKA_KEY_FILE")
-    username = os.getenv("AIVEN_KAFKA_USERNAME")
-    password = os.getenv("AIVEN_KAFKA_PASSWORD")
 
-    if ca:
-        config["ssl.ca.location"] = ca
-    if cert:
-        config["ssl.certificate.location"] = cert
-    if key:
-        config["ssl.key.location"] = key
+def _kafka_config() -> dict:
+    """Base librdkafka config shared by producer, consumer and admin probes."""
+    from dependency.events.kafka_settings import load_kafka_settings
 
-    if username and password:
-        config["security.protocol"] = os.getenv(
-            "AIVEN_KAFKA_SECURITY_PROTOCOL",
-            "SASL_SSL",
-        )
-        config["sasl.mechanism"] = os.getenv("AIVEN_KAFKA_SASL_MECHANISM", "PLAIN")
-        config["sasl.username"] = username
-        config["sasl.password"] = password
+    return load_kafka_settings().librdkafka()
 
+
+def kafka_producer_config() -> dict:
+    """At-least-once, ordered delivery: the outbox marks rows only on ack."""
+    config = _kafka_config()
+    config.update(
+        {
+            "enable.idempotence": True,
+            "acks": "all",
+            "message.timeout.ms": int(os.getenv("AIVEN_KAFKA_MESSAGE_TIMEOUT_MS", "20000")),
+            "socket.timeout.ms": 10000,
+            "compression.type": "lz4",
+        }
+    )
     return config
 
 
-def flush_to_kafka(limit: int = 100) -> dict:
+def flush_to_kafka(limit: int = 100, *, flush_timeout: float = 25.0) -> dict:
     """Publish pending outbox events to Aiven Kafka.
 
     If Aiven is not configured, callers should keep the rows in the local
-    outbox. Nothing is silently dropped.
+    outbox. Nothing is silently dropped: a row is marked published only after
+    the broker acknowledges it, otherwise its attempt count and last_error grow.
     """
     try:
         from confluent_kafka import Producer
@@ -154,24 +177,27 @@ def flush_to_kafka(limit: int = 100) -> dict:
     if not rows:
         return {"attempted": 0, "published": 0, "failed": 0}
 
-    producer = Producer(_kafka_config())
+    producer = Producer(kafka_producer_config())
     results: dict[str, str | None] = {}
 
     def delivery(err, msg, outbox_id):
         results[outbox_id] = str(err) if err else None
 
     for row in rows:
-        producer.produce(
-            physical_topic_for(row["topic"]),
-            key=row["event_key"].encode("utf-8"),
-            value=json.dumps(
-                build_event_envelope(row),
-                default=str,
-            ).encode("utf-8"),
-            callback=lambda err, msg, oid=row["outbox_id"]: delivery(err, msg, oid),
-        )
+        try:
+            producer.produce(
+                physical_topic_for(row["topic"]),
+                key=row["event_key"].encode("utf-8"),
+                value=json.dumps(
+                    build_event_envelope(row),
+                    default=str,
+                ).encode("utf-8"),
+                callback=lambda err, msg, oid=row["outbox_id"]: delivery(err, msg, oid),
+            )
+        except Exception as exc:  # BufferError, KafkaException, ValueError
+            results[row["outbox_id"]] = f"{type(exc).__name__}: {exc}"
 
-    producer.flush(15)
+    producer.flush(flush_timeout)
 
     published = 0
     failed = 0

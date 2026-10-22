@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 
 from dependency.events.bus import flush_to_kafka, pending
+from dependency.events.kafka_settings import load_kafka_settings
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--publish", action="store_true")
@@ -24,8 +24,9 @@ if not args.publish:
     print("Nothing was dropped. Use --publish after Aiven Kafka credentials are configured.")
     raise SystemExit(0)
 
-if not os.getenv("AIVEN_KAFKA_BROKERS"):
-    raise SystemExit("AIVEN_KAFKA_BROKERS is not configured.")
+settings = load_kafka_settings().describe()
+if not settings["valid"]:
+    raise SystemExit("Kafka not configured: " + " ".join(settings["problems"]))
 
 print("\nAIVEN KAFKA FLUSH")
 print(json.dumps(flush_to_kafka(limit=args.limit), indent=2))

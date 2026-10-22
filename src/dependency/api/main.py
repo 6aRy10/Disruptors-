@@ -68,6 +68,7 @@ from dependency.graph.network import list_network_facilities, network_stats
 from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
 from dependency.graph.activity_stream import read_activity
 from dependency.api.readiness import local_readiness
+from dependency.events.health import kafka_health, liveness, readiness
 from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
 from dependency.assistant.mission_controller import mission_preview
@@ -361,6 +362,26 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.get("/health/live")
+def health_live():
+    """Container liveness: process is serving; touches no dependency."""
+    return liveness()
+
+
+@app.get("/health/ready")
+def health_ready(probe_kafka: bool = Query(default=False)):
+    """Readiness for load balancers; 503 when the database is unavailable."""
+    result = readiness(probe_kafka=probe_kafka)
+    return JSONResponse(status_code=200 if result["status"] == "READY" else 503,
+                        content=result)
+
+
+@app.get("/health/kafka")
+def health_kafka(probe: bool = Query(default=False)):
+    """Secret-free Kafka transport view; ?probe=true queries broker metadata."""
+    return kafka_health(probe=probe)
 
 
 @app.post("/app-data/mission-agents")

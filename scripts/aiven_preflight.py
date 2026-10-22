@@ -66,17 +66,19 @@ def check_postgresql(url: str | None = None) -> dict:
 
 def check_kafka() -> dict:
     """Check configuration only. No network call, topic creation or billing."""
-    brokers = os.getenv("AIVEN_KAFKA_BROKERS", "").strip()
-    if not brokers:
+    from dependency.events.kafka_settings import load_kafka_settings
+
+    s = load_kafka_settings()
+    if not s.configured:
         return {"status": "NOT_CONFIGURED",
-                "action": "Create or connect Kafka, then set AIVEN_KAFKA_BROKERS."}
-    protocol = os.getenv("AIVEN_KAFKA_SECURITY_PROTOCOL", "SSL").upper()
+                "action": "Create or connect Kafka, then set AIVEN_KAFKA_BROKERS "
+                          "(or let Aiven Runtime inject KAFKA_BOOTSTRAP_SERVERS)."}
+    protocol = s.security_protocol
     if protocol not in {"SSL", "SASL_SSL"}:
         return {"status": "UNSAFE_PROTOCOL", "protocol": protocol}
-    user = bool(os.getenv("AIVEN_KAFKA_USERNAME"))
-    pwd = bool(os.getenv("AIVEN_KAFKA_PASSWORD"))
-    cert = bool(os.getenv("AIVEN_KAFKA_CERT_FILE"))
-    key = bool(os.getenv("AIVEN_KAFKA_KEY_FILE"))
+    user, pwd = bool(s.sasl_username), bool(s.sasl_password)
+    cert = bool(s.cert_file or s.cert_pem)
+    key = bool(s.key_file or s.key_pem)
     if (user != pwd) or (cert != key):
         return {"status": "PARTIAL_AUTH_CONFIGURATION", "protocol": protocol}
     if not ((user and pwd) or (cert and key)):
@@ -84,6 +86,7 @@ def check_kafka() -> dict:
     if user and pwd and protocol != "SASL_SSL":
         return {"status": "PROTOCOL_MISMATCH", "expected": "SASL_SSL"}
     return {"status": "CONFIGURED_NOT_CONNECTED", "protocol": protocol,
+            "settings": s.describe(),
             "note": "Kafka TLS reachability, topics and publish/consume are not yet verified."}
 
 

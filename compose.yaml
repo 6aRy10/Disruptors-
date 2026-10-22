@@ -1,0 +1,50 @@
+# Local / VM deployment against the EXISTING Aiven PostgreSQL and Aiven Kafka.
+# Secrets come from an untracked .env file (see .env.example); TLS files are
+# mounted read-only from ./certs (git- and docker-ignored). Nothing here
+# creates, migrates or resets a database.
+#
+#   docker compose up --build -d
+#   docker compose ps                      # health column per role
+#   curl -s "localhost:8000/health/kafka?probe=true"
+
+x-hermes: &hermes
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  volumes:
+    - ./certs:/certs:ro
+  restart: unless-stopped
+
+x-hermes-env: &hermes-env
+  DEPENDENCY_DATABASE_TARGET: ${DEPENDENCY_DATABASE_TARGET:-aiven}
+  AIVEN_KAFKA_CA_FILE: /certs/ca.pem
+  AIVEN_KAFKA_CERT_FILE: /certs/service.cert
+  AIVEN_KAFKA_KEY_FILE: /certs/service.key
+
+services:
+  api:
+    <<: *hermes
+    environment:
+      <<: *hermes-env
+      HERMES_ROLE: api
+      PORT: "8000"
+    ports:
+      - "${HERMES_API_PORT:-8000}:8000"
+
+  publisher:
+    <<: *hermes
+    environment:
+      <<: *hermes-env
+      HERMES_ROLE: publisher
+      HERMES_PUBLISHER_INTERVAL_SECONDS: "2"
+
+  # Run exactly ONE consumer replica: idempotency is DB-backed but sequential.
+  consumer:
+    <<: *hermes
+    environment:
+      <<: *hermes-env
+      HERMES_ROLE: consumer
+    deploy:
+      replicas: 1

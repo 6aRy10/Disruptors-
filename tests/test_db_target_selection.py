@@ -41,5 +41,43 @@ class ExplicitDatabaseSelectionTests(unittest.TestCase):
         self.assertEqual(database_url(),"postgresql://local.internal/demo")
 
 
+class AivenRuntimeInjectedDatabaseTests(unittest.TestCase):
+    """Runtime integrations inject DATABASE_URL; accept it only for an explicit aiven target."""
+
+    @patch.dict("os.environ",{
+        "DATABASE_URL":"postgresql://u:p@hermes-db-x.e.aivencloud.com:19369/defaultdb?sslmode=require",
+        "AIVEN_DATABASE_URL":"",
+        "DEPENDENCY_DATABASE_TARGET":"aiven",
+    })
+    def test_injected_managed_url_used_when_aiven_selected(self):
+        self.assertEqual(database_target(),"aiven")
+        self.assertIn("aivencloud.com",database_url())
+
+    @patch.dict("os.environ",{
+        "DATABASE_URL":"postgresql://u:p@injected.aivencloud.com:19369/defaultdb",
+        "AIVEN_DATABASE_URL":"postgresql://u:p@explicit.aivencloud.com:19369/defaultdb",
+        "DEPENDENCY_DATABASE_TARGET":"aiven",
+    })
+    def test_explicit_aiven_url_is_never_overridden(self):
+        self.assertIn("explicit.aivencloud.com",database_url())
+
+    @patch.dict("os.environ",{
+        "DATABASE_URL":"postgresql://postgres:x@localhost:5432/Disruptors",
+        "AIVEN_DATABASE_URL":"",
+        "DEPENDENCY_DATABASE_TARGET":"aiven",
+    })
+    def test_local_url_never_masquerades_as_aiven(self):
+        with self.assertRaises(RuntimeError):
+            database_url()
+
+    @patch.dict("os.environ",{
+        "DATABASE_URL":"postgresql://u:p@injected.aivencloud.com:19369/defaultdb",
+        "AIVEN_DATABASE_URL":"",
+        "DEPENDENCY_DATABASE_TARGET":"",
+    })
+    def test_without_explicit_target_injected_url_is_plain_local(self):
+        self.assertEqual(database_target(),"local")
+
+
 if __name__=="__main__":
     unittest.main()

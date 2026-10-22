@@ -148,11 +148,14 @@ done
    *Connect service* -> pick `hermes-db` / the Kafka service; then rename the
    PostgreSQL variable to `AIVEN_DATABASE_URL`.
 
-   The PostgreSQL integration uses the custom key `AIVEN_DATABASE_URL` so the
-   application's explicit `DEPENDENCY_DATABASE_TARGET=aiven` selection works
-   unchanged. The Kafka integration injects `KAFKA_BOOTSTRAP_SERVERS`,
-   `KAFKA_SECURITY_PROTOCOL=SSL`, `KAFKA_CA_CERT`, `KAFKA_ACCESS_CERT`,
-   `KAFKA_ACCESS_KEY`; no certificate files are needed.
+   Default integration names also work: when the PostgreSQL integration
+   injects plain `DATABASE_URL` the application accepts it **only** if
+   `DEPENDENCY_DATABASE_TARGET=aiven` (set in the manifest), the host ends in
+   `.aivencloud.com`, and no explicit `AIVEN_DATABASE_URL` is present. The
+   Kafka integration injects `KAFKA_BOOTSTRAP_SERVER` (singular, as observed)
+   or `KAFKA_BOOTSTRAP_SERVERS`, plus `KAFKA_SECURITY_PROTOCOL=SSL`,
+   `KAFKA_CA_CERT`, `KAFKA_ACCESS_CERT`, `KAFKA_ACCESS_KEY`; both bootstrap
+   names are read and no certificate files are needed.
 3. Add secrets as Runtime environment variables on `hermes-api`:
    `DEPENDENCY_WRITE_TOKEN` (strong random), `OPENAI_API_KEY` if agents are
    used, `SLACK_*` if Slack is used. Mark them *secret*, not *variable*.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
+from urllib.parse import urlsplit
 
 import psycopg
 from dotenv import load_dotenv
@@ -34,9 +35,25 @@ def database_url() -> str:
     target = database_target()
     key = "AIVEN_DATABASE_URL" if target == "aiven" else "DATABASE_URL"
     url = os.getenv(key)
+    if not url and target == "aiven" and _is_aiven_runtime_injected_url(os.getenv("DATABASE_URL")):
+        # Aiven Runtime service integrations inject the managed PostgreSQL URI
+        # as DATABASE_URL. Accept it only when the operator explicitly selected
+        # the aiven target and no AIVEN_DATABASE_URL overrides it.
+        url = os.getenv("DATABASE_URL")
     if not url:
         raise RuntimeError(f"Selected {target} database has no configured URL.")
     return url
+
+
+def _is_aiven_runtime_injected_url(url: str | None) -> bool:
+    """A managed Aiven URI, never a localhost/dev URL mistaken for the twin."""
+    if not url:
+        return False
+    try:
+        host = (urlsplit(url).hostname or "").lower()
+    except ValueError:
+        return False
+    return bool(host) and host.endswith(".aivencloud.com")
 
 
 @contextmanager

@@ -112,6 +112,29 @@ class KafkaSettingsTests(unittest.TestCase):
         self.assertTrue(any("key files must both" in p for p in problems))
 
 
+class AivenRuntimeInjectedNamesTests(unittest.TestCase):
+    PEMS = {"KAFKA_CA_CERT": "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----",
+            "KAFKA_ACCESS_CERT": "-----BEGIN CERTIFICATE-----\nC\n-----END CERTIFICATE-----",
+            "KAFKA_ACCESS_KEY": "-----BEGIN PRIVATE KEY-----\nK\n-----END PRIVATE KEY-----"}
+
+    @patch.dict("os.environ", {**CLEAR, "KAFKA_BOOTSTRAP_SERVER": "rt.aivencloud.com:12345",
+                               "KAFKA_SECURITY_PROTOCOL": "SSL"})
+    def test_singular_bootstrap_server_is_accepted(self):
+        with patch.dict("os.environ", self.PEMS):
+            settings = load_kafka_settings()
+        self.assertEqual(settings.source, "KAFKA_BOOTSTRAP_SERVER")
+        self.assertTrue(settings.describe()["valid"])
+        self.assertEqual(settings.librdkafka()["bootstrap.servers"], "rt.aivencloud.com:12345")
+
+    @patch.dict("os.environ", {**CLEAR, "KAFKA_BOOTSTRAP_SERVER": "injected.aivencloud.com:1",
+                               "KAFKA_BOOTSTRAP_SERVERS": "plural.aivencloud.com:2",
+                               "AIVEN_KAFKA_BROKERS": "explicit.aivencloud.com:3"})
+    def test_explicit_project_variable_wins_over_injected_names(self):
+        self.assertEqual(load_kafka_settings().brokers, "explicit.aivencloud.com:3")
+        with patch.dict("os.environ", {"AIVEN_KAFKA_BROKERS": ""}):
+            self.assertEqual(load_kafka_settings().brokers, "plural.aivencloud.com:2")
+
+
 class CredentialFileTests(unittest.TestCase):
     @patch.dict("os.environ", {**CLEAR,
         "AIVEN_KAFKA_BROKERS": "k.aivencloud.com:12345",

@@ -151,11 +151,15 @@ class KafkaSettings:
 
 
 def load_kafka_settings() -> KafkaSettings:
-    brokers = _env("AIVEN_KAFKA_BROKERS")
-    source = "AIVEN_KAFKA_BROKERS"
-    if not brokers:
-        brokers = _env("KAFKA_BOOTSTRAP_SERVERS")
-        source = "KAFKA_BOOTSTRAP_SERVERS" if brokers else "NONE"
+    # Aiven Runtime documents KAFKA_BOOTSTRAP_SERVERS but injects the singular
+    # KAFKA_BOOTSTRAP_SERVER by default; accept both, explicit project var first.
+    source = "NONE"
+    brokers = ""
+    for name in ("AIVEN_KAFKA_BROKERS", "KAFKA_BOOTSTRAP_SERVERS", "KAFKA_BOOTSTRAP_SERVER"):
+        brokers = _env(name)
+        if brokers:
+            source = name
+            break
 
     sasl_username = _env("AIVEN_KAFKA_USERNAME", "KAFKA_SASL_USERNAME")
     sasl_password = _env("AIVEN_KAFKA_PASSWORD", "KAFKA_SASL_PASSWORD")

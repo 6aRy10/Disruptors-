@@ -128,6 +128,7 @@ def run_kafka_consumer(
     consumer = consumer_factory(kafka_consumer_config())
     consumer.subscribe(list(topics if topics is not None else kafka_subscription_topics()))
     heartbeat = Heartbeat(heartbeat_path)
+    heartbeat.beat()
     stats = {"handled": 0, "duplicates": 0, "skipped": 0, "orphaned": 0, "errors": 0,
              "stopped_by": None}
 

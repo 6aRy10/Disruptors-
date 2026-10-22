@@ -30,6 +30,7 @@ def run_kafka_publisher(
     by ``flush_to_kafka`` when the failure is per-message. Nothing is dropped.
     """
     heartbeat = Heartbeat(heartbeat_path)
+    heartbeat.beat()
     totals = {
         "cycles": 0, "attempted": 0, "published": 0, "failed": 0,
         "cycle_errors": 0, "last_error_type": None, "stopped_by": None,

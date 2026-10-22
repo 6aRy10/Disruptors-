@@ -66,8 +66,10 @@ def event_journey(*, event_id: str) -> dict:
 
     outbox_id = delivery[0] if delivery else None
     consumption_status = delivery[3] if delivery else None
+    # The local worker persists the business result directly in result_json.
+    # Older imported envelopes may wrap the same result under "result".
     worker_result = (delivery[5] if delivery and isinstance(delivery[5], dict) else {})
-    outcome = worker_result.get("result", {}) if isinstance(worker_result, dict) else {}
+    outcome = worker_result.get("result", worker_result)
     worker_outcome = outcome.get("status") if isinstance(outcome, dict) else None
     open_tasks = [t for t in tasks if t[4] == "OPEN"]
     resolved_tasks = [t for t in tasks if t[4] == "RESOLVED"]

@@ -205,6 +205,9 @@ jobs:
       - name: Test deterministic runner without AI import dependencies
         run: python -m unittest tests.test_live_stack_imports -v
 
+      - name: Test independent NASA FIRMS satellite observations
+        run: python -m unittest tests.test_firms_source -v
+
       - name: Test source receipts and live feed truthfulness
         run: python -m unittest tests.test_activity_stream tests.test_collector_poll_receipts -v
 

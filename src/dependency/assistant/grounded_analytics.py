@@ -94,7 +94,7 @@ def grounded_think(*, question: str, event_id: str | None = None,
             charts.append({
                 "id":"orders_by_market","kind":"bar","title":"SKU commitments by market",
                 "unit":"units","provenance":"SIMULATED_PRIVATE",
-                "limitation":"Orders are linked to the SKU, not allocated to a named supplier.",
+                "limitation":"SKU orders are NOT assigned to any named supplier.",
                 "data":[{"label":key,"value":round(value,2)} for key,value in
                         sorted(demand.items(),key=lambda t:(-t[1],t[0]))[:12]],
             })

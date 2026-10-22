@@ -79,6 +79,9 @@ jobs:
       - name: Test network graph views
         run: python -m unittest tests.test_network_views -v
 
+      - name: Test full PostgreSQL backup transfer safety
+        run: python -m unittest tests.test_full_team_database_export -v
+
       - name: Test safe team data snapshot export
         run: python -m unittest tests.test_team_model_export -v
 

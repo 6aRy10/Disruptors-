@@ -206,6 +206,11 @@ jobs:
         timeout-minutes: 4
         run: python -m unittest tests.test_live_evidence_to_recovery -v
 
+      - name: Verify source to investigation event journey in disposable PostgreSQL
+        env:
+          HERMES_CI_DISPOSABLE_DB: "1"
+        run: python -m unittest tests.test_event_journey_e2e -v
+
       - name: Test unscripted event creates persisted investigation queue
         run: python -m unittest tests.test_live_investigation_db -v
 

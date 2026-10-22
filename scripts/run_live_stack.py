@@ -102,11 +102,13 @@ def run_cycle(
                 created = (len(summary.get("created_events", []))
                            if name == "PORTWATCH" else int(summary.get("created_count", 0)))
                 try:
+                    poll_status = "ERROR" if results[name]["status"] == "ERROR" else "OK"
                     results[name]["check_recorded"] = record_collector_check(
-                        source=name, status="OK",
+                        source=name, status=poll_status,
                         received_count=int(summary.get("received_count",
                             summary.get("checked_port_count", 0))),
                         created_count=created,
+                        error_type=("PartialSourceError" if poll_status == "ERROR" else None),
                     )
                 except Exception:
                     results[name]["check_recorded"] = False

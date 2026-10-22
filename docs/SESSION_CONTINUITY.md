@@ -1,4 +1,32 @@
 # HERMES / DEPENDENCY — CONTINUITY HANDOFF FOR A NEW CHAT AND TEAM
+
+## CURRENT CHECKPOINT — 2026-10-22 (OVERRIDES OLDER V3 STATUS BELOW)
+
+This is the **newest** project state. Older sections below are historical and must not be treated as the latest frontend milestone.
+
+- Working branch: `feat/db-foundation`; reviewed source HEAD `ebe82fc164d01a1a572387c1d56bc10f27409897`.
+- Latest verified CI at review: https://github.com/6aRy10/Disruptors-/actions/runs/39725476115 — success.
+- Public name **HERMES**, Python project **Dependency**. Goal: an ambitious, usable agent-assisted recovery operating system, with a Palantir-like *object/relationship/action* model, not another risk dashboard.
+- **Actual progress beyond v3:** Source evidence ledger/live event feed and collector-check migration (see `docs/HERMES_PIPELINE_AND_LOGIC_AUDIT.md`); event-to-action workflow (`docs/HERMES_V9_EVENT_TO_ACTION.md`); destination-qualified upstream material allocation routes and offline reference geography (`docs/HERMES_V10_ROUTE_AND_OFFLINE_MAP.md`). Historical v3 notes below are no longer the newest milestone.
+- **Private frontend v10** is NOT in this public repo. The owner holds a site ZIP and v10 overlay separately. In a new chat, request the current frontend ZIP **only if editing it requires the source**. Do not fabricate a download path or assume a prior chat attachment is available.
+- The owner last verified on Windows that v2 showed all 770 public sites and the Indonesian wildfire `GDACS-WF-1032942` linked to modeled SKU IU7704 with 6,000 units and EUR360K connected revenue. **Do not call a later frontend version Windows-verified without a screenshot/test from the user.**
+- Postgres on owner's machine contains 770 real/public supplier identities, 2,500 generated-private products, 170,018 allocations, 20,018 customer commitments, 266,737 original generated rows. Never run destructive seed/reset steps there. The owner's local DB is not shared with cloud GitHub actions.
+- The connected source/solver system has significant gaps: source revision history, broader verified official trade/logistics data, globally optimal multi-material and dated-flow allocation, authenticated supplier replies, production permissions, managed Aiven deployment, reliable live jobs, end-to-end actual user browser testing. Do not call any of these complete.
+- **Tradeoff:** fast hackathon demo uses the historical 2022 Cianjur replay for one reliable full recovery; generalized current GDACS/USGS exposure stops at evidence request unless independently confirmed private operational state exists.
+- Distinguish observed hazard from selected map object. Orange=source hazard geometry/time, white=selection, green=explicit potential private network path. No invented orange storm track, automatic factory closure, fake risk scores or unverified revenues presented as losses.
+- Source-level facts: USGS/GDACS public; IMF PortWatch anomalies derived. Private order/BOM/economics/transport linkages are modeled demo values, not independently verified real Adidas operations.
+- Website `See how it works` routes to `/app/` locally. Private landing-page React/Vite source is not published to the public backend repo due to assets and waitlist identifiers.
+- Vite/PowerShell troubleshooting: separate node_modules per extracted folder; `npm ci`; local `postcss.config.cjs` prevents unrelated user-home Tailwind error; `--strictPort` avoids accidentally viewing old app. Backend 127.0.0.1:8000, frontend 127.0.0.1:5173. A backend `git pull` does not update the private frontend.
+- Team continuity: treat this file as the **entry point** and inspect newest `docs/HERMES_V10_ROUTE_AND_OFFLINE_MAP.md`, `docs/HERMES_PIPELINE_AND_LOGIC_AUDIT.md`, `docs/HERMES_V9_EVENT_TO_ACTION.md`, `docs/HERMES_V5_RECOVERY_ENGINEERING.md`, `docs/TEAM_ENGINEERING_HANDOFF.md`, latest workflow run and current frontend ZIP.
+- Implementation priority: one powerful explainable event-to-decision experience, then dated joint-resource execution proof. Work across real APIs and sources; test DB+browser end-to-end. Avoid making another parallel dashboard. Source-connected changes go in GitHub and a reproducible frontend artifact.
+- Communication: user is stressed about maximum chat length. Provide an immediate useful status and preserve the handoff link. Do not claim the platform chat limit can be removed.
+
+### Paste this in a new chat
+
+> Continue HERMES from GitHub `https://github.com/6aRy10/Disruptors-`, branch `feat/db-foundation`. Read `docs/SESSION_CONTINUITY.md` **CURRENT CHECKPOINT** and `docs/HERMES_V10_ROUTE_AND_OFFLINE_MAP.md`, then inspect latest CI and code. Public name HERMES; backend Dependency. The goal is an ambitious operational supply-chain recovery product, not a risk dashboard. Existing owner local Postgres has 770 public facilities and 266,737 generated-private rows; do not reset it. Current frontend is privately supplied (v10), NOT in public GitHub. Do not redo completed map/feed/route fixes. Continue verified product engineering, keep exact teammate handoffs, and use concise 80% ASD-STE100 wording.
+
+---
+
 **Last reviewed:** 2026-10-21. **This is the starting point in a new conversation.**
 **Source-of-truth repository:** https://github.com/6aRy10/Disruptors-
 **Active working branch:** `feat/db-foundation`

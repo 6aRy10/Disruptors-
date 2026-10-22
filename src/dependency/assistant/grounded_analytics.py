@@ -64,8 +64,8 @@ def grounded_think(*, question: str, event_id: str | None = None,
                          "value":float(p.get("commitment_units") or 0),
                          "entity_id":"product:"+p["sku"]} for p in products],
             })
-        if not selected_sku and len(products)==1:
-            selected_sku=products[0].get("sku")
+        # Event-level answers must not silently select a product; the operator
+        # explicitly drills into a SKU before seeing its order allocations.
         evidence.extend([
             {"kind":"EVIDENCE_TASK", "id":task["task_id"],
              "label":task.get("required_fact"),"target_id":task.get("target_id"),

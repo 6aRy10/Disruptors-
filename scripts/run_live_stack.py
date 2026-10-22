@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 
 from dependency.automation.orchestrator import process_pending_events
@@ -122,6 +123,24 @@ def run_cycle(
                     )
                 except Exception:
                     results[name]["check_recorded"] = False
+    # Opt-in, independently guarded external alert; never auto-enable.
+    # Operates only after successful local incident processing. The same
+    # watcher can run beside Uvicorn without another console window.
+    if worker and results.get("ORCHESTRATOR", {}).get("status") == "OK" \
+            and os.getenv("DEPENDENCY_ALLOW_EXTERNAL_MESSAGES") == "1" \
+            and os.getenv("SLACK_INCIDENT_WEBHOOK_URL"):
+        try:
+            from dependency.notifications.cyclone_alerts import notify_pending_cyclones
+            alert = notify_pending_cyclones(limit=10)
+            results["SLACK_CYCLONE_ALERTS"] = {
+                "status": alert["status"],
+                "sent": alert.get("sent", 0),
+                "failed": alert.get("failed", 0),
+            }
+        except Exception as exc:
+            results["SLACK_CYCLONE_ALERTS"] = {
+                "status": "ERROR", "error_type": type(exc).__name__
+            }
     return {
         "status": (
             "OK"

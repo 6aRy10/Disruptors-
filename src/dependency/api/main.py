@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime
 import os
 from dependency.api.write_guard import require_write_authorization
 
@@ -65,6 +66,7 @@ from dependency.graph.shared_dependencies import backup_independence
 from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
+from dependency.graph.activity_stream import read_activity
 from dependency.assistant.expeditor import answer_expeditor
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
@@ -353,6 +355,19 @@ def expeditor_read_only(body: ExpeditorQuestion):
                                 object_id=body.object_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/app-data/activity")
+def app_event_activity(
+    limit: int = Query(default=80,ge=1,le=200),
+    source: str | None = Query(default=None,max_length=80),
+    since: datetime | None = None,
+):
+    """Read-only recorded source arrivals and local outbox processing."""
+    try:
+        return read_activity(limit=limit,source=source,since=since)
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
 
 
 @app.get("/app-data/events/{event_id}")

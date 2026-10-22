@@ -70,6 +70,8 @@ from dependency.graph.activity_stream import read_activity
 from dependency.api.readiness import local_readiness
 from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
+from dependency.assistant.grounded_analytics import grounded_think
+from dependency.notifications.cyclone_alerts import cyclone_preview
 from dependency.assistant.mission_controller import mission_preview
 from dependency.assistant.mission_agents import run_supervised_agents
 from dependency.solver.tariff import tariff_impact
@@ -387,6 +389,28 @@ def mission_preview_read_only(body: MissionPreviewQuestion):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/app-data/think")
+def think_hermes_grounded(body: ExpeditorQuestion):
+    """Model-independent, source-linked charts and evidence for selected objects."""
+    try:
+        return grounded_think(
+            question=body.question,event_id=body.event_id,
+            sku=body.sku,facility_id=body.facility_id,
+            object_id=body.object_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
+
+
+@app.get("/integrations/slack/cyclone-preview/{event_id}")
+def slack_cyclone_alert_preview(event_id: str):
+    """Read-only rendering: NEVER sends a Slack message."""
+    try:
+        return cyclone_preview(event_id=event_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400,detail=str(exc)) from exc
 
 
 @app.post("/app-data/ask")

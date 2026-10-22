@@ -71,6 +71,7 @@ from dependency.api.readiness import local_readiness
 from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
 from dependency.assistant.mission_controller import mission_preview
+from dependency.assistant.mission_agents import run_supervised_agents
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -120,6 +121,13 @@ app.mount(
     StaticFiles(directory=str(WEB_ROOT)),
     name="dashboard-assets",
 )
+
+
+class MissionAgentQuestion(BaseModel):
+    event_id: str = Field(min_length=1, max_length=180)
+    question: str = Field(min_length=2, max_length=1000)
+    sku: str | None = Field(default=None, max_length=120)
+    consent_to_model: bool = False
 
 
 class MissionPreviewQuestion(BaseModel):
@@ -353,6 +361,18 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.post("/app-data/mission-agents")
+def mission_specialists_opt_in(body: MissionAgentQuestion):
+    """Explicit opt-in only. Specialist agents have NO mutating tools."""
+    try:
+        return run_supervised_agents(
+            event_id=body.event_id, question=body.question,
+            sku=body.sku, caller_opt_in=body.consent_to_model,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/app-data/mission-preview")

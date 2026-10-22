@@ -207,9 +207,25 @@ jobs:
         run: python -m unittest tests.test_live_evidence_to_recovery -v
 
       - name: Trace recorded event through investigation evidence
+        id: journey_e2e
+        shell: bash
         env:
           HERMES_CI_DISPOSABLE_DB: "1"
-        run: python -m unittest tests.test_event_journey_e2e.EventJourneyIntegration.test_unfamiliar_event_records_entire_explainable_lifecycle -v
+        run: |
+          set +e
+          python -m unittest tests.test_event_journey_e2e.EventJourneyIntegration.test_unfamiliar_event_records_entire_explainable_lifecycle -v > /tmp/hermes_journey_test.log 2>&1
+          outcome=$?
+          if [ "$outcome" -ne 0 ]; then
+            issue=$(grep -E 'AssertionError:|ValueError:|TypeError:|KeyError:|AttributeError:|psycopg.errors.|test_event_journey_e2e.py.*, line ' /tmp/hermes_journey_test.log | tail -n 2 | tr '\\n' ' ' | cut -c 1-150)
+            issue=$(printf '%s' "$issue" | tr -cd '[:alnum:] .,/_:-')
+            echo "issue=$issue" >> "$GITHUB_OUTPUT"
+          fi
+          cat /tmp/hermes_journey_test.log
+          exit "$outcome"
+
+      - name: "Journey debug ${{ steps.journey_e2e.outputs.issue }}"
+        if: failure()
+        run: echo "See the source-to-evidence test output above."
 
       - name: Trace non-exposed event without invented incident
         env:

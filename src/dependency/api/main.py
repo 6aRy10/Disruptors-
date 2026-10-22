@@ -67,6 +67,7 @@ from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
 from dependency.graph.activity_stream import read_activity
+from dependency.api.readiness import local_readiness
 from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
 from dependency.solver.tariff import tariff_impact
@@ -356,6 +357,12 @@ def expeditor_read_only(body: ExpeditorQuestion):
                                 object_id=body.object_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/app-data/readiness")
+def app_local_readiness():
+    """Read-only diagnostics; errors are structured, never credentials."""
+    return local_readiness()
 
 
 @app.get("/app-data/activity")

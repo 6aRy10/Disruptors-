@@ -135,6 +135,57 @@ class AivenRuntimeInjectedNamesTests(unittest.TestCase):
             self.assertEqual(load_kafka_settings().brokers, "plural.aivencloud.com:2")
 
 
+class InlinePemPrecedenceTests(unittest.TestCase):
+    """Exact Runtime configuration: injected PEMs plus stale /certs/* file paths."""
+    RUNTIME = {**CLEAR,
+        "KAFKA_BOOTSTRAP_SERVER": "rt.aivencloud.com:12345",
+        "KAFKA_SECURITY_PROTOCOL": "SSL",
+        "KAFKA_CA_CERT": "-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----",
+        "KAFKA_ACCESS_CERT": "-----BEGIN CERTIFICATE-----\nC\n-----END CERTIFICATE-----",
+        "KAFKA_ACCESS_KEY": "-----BEGIN PRIVATE KEY-----\nK\n-----END PRIVATE KEY-----",
+        "AIVEN_KAFKA_CA_FILE": "/certs/ca.pem",
+        "AIVEN_KAFKA_CERT_FILE": "/certs/service.cert",
+        "AIVEN_KAFKA_KEY_FILE": "/certs/service.key"}
+
+    @patch.dict("os.environ", RUNTIME)
+    def test_injected_pems_beat_missing_cert_files(self):
+        settings = load_kafka_settings()
+        self.assertEqual((settings.ca_file, settings.cert_file, settings.key_file), ("", "", ""))
+        description = settings.describe()
+        self.assertTrue(description["valid"], description["problems"])
+        self.assertEqual(description["credential_format"], "inline_pem")
+        self.assertEqual(description["auth_method"], "MTLS")
+        config = settings.librdkafka()
+        self.assertIn("ssl.ca.pem", config)
+        self.assertIn("ssl.certificate.pem", config)
+        self.assertIn("ssl.key.pem", config)
+        for key in ("ssl.ca.location", "ssl.certificate.location", "ssl.key.location"):
+            self.assertNotIn(key, config)
+        self.assertEqual(config["bootstrap.servers"], "rt.aivencloud.com:12345")
+
+    @patch.dict("os.environ", {**RUNTIME, "KAFKA_ACCESS_KEY": ""})
+    @patch("dependency.events.kafka_settings.os.path.isfile", new=lambda path: True)
+    def test_incomplete_inline_pair_falls_back_to_files_and_is_flagged(self):
+        settings = load_kafka_settings()
+        self.assertEqual(settings.cert_file, "/certs/service.cert")
+        self.assertFalse(settings.describe()["valid"])
+
+    @patch.dict("os.environ", {**CLEAR,
+        "AIVEN_KAFKA_BROKERS": "k.aivencloud.com:12345",
+        "AIVEN_KAFKA_CA_FILE": "/certs/ca.pem",
+        "AIVEN_KAFKA_CERT_FILE": "/certs/service.cert",
+        "AIVEN_KAFKA_KEY_FILE": "/certs/service.key",
+        "KAFKA_CA_CERT": "not-a-pem"})
+    @patch("dependency.events.kafka_settings.os.path.isfile", new=lambda path: True)
+    def test_file_based_docker_setup_still_works(self):
+        settings = load_kafka_settings()
+        self.assertEqual(settings.ca_file, "/certs/ca.pem", "non-PEM text cannot displace a path")
+        config = settings.librdkafka()
+        self.assertEqual(config["ssl.ca.location"], "/certs/ca.pem")
+        self.assertEqual(config["ssl.certificate.location"], "/certs/service.cert")
+        self.assertNotIn("ssl.ca.pem", config)
+
+
 class CredentialFileTests(unittest.TestCase):
     @patch.dict("os.environ", {**CLEAR,
         "AIVEN_KAFKA_BROKERS": "k.aivencloud.com:12345",

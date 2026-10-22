@@ -35,6 +35,11 @@ def _env_pem(*names: str) -> str:
     return value.replace("\\n", "\n") if value else ""
 
 
+def _looks_like_pem(value: str) -> bool:
+    """Only real PEM text may displace a file path; a stray path or blank cannot."""
+    return "-----BEGIN " in value and "-----END " in value
+
+
 @dataclass(frozen=True)
 class KafkaSettings:
     brokers: str
@@ -167,17 +172,28 @@ def load_kafka_settings() -> KafkaSettings:
     if not protocol:
         protocol = "SASL_SSL" if (sasl_username and sasl_password) else "SSL"
 
+    # Inline PEM (Aiven Runtime integration) takes precedence over file paths:
+    # a stale AIVEN_KAFKA_*_FILE pointing at a non-existent mount must not
+    # break a container that already holds valid injected credentials.
+    ca_pem = _env_pem("AIVEN_KAFKA_CA_PEM", "KAFKA_CA_CERT")
+    cert_pem = _env_pem("AIVEN_KAFKA_CERT_PEM", "KAFKA_ACCESS_CERT")
+    key_pem = _env_pem("AIVEN_KAFKA_KEY_PEM", "KAFKA_ACCESS_KEY")
+    ca_file = "" if _looks_like_pem(ca_pem) else _env("AIVEN_KAFKA_CA_FILE")
+    inline_pair = _looks_like_pem(cert_pem) and _looks_like_pem(key_pem)
+    cert_file = "" if inline_pair else _env("AIVEN_KAFKA_CERT_FILE")
+    key_file = "" if inline_pair else _env("AIVEN_KAFKA_KEY_FILE")
+
     return KafkaSettings(
         brokers=brokers,
         security_protocol=protocol,
         client_id=_env("AIVEN_KAFKA_CLIENT_ID") or DEFAULT_CLIENT_ID,
         source=source,
-        ca_file=_env("AIVEN_KAFKA_CA_FILE"),
-        cert_file=_env("AIVEN_KAFKA_CERT_FILE"),
-        key_file=_env("AIVEN_KAFKA_KEY_FILE"),
-        ca_pem=_env_pem("AIVEN_KAFKA_CA_PEM", "KAFKA_CA_CERT"),
-        cert_pem=_env_pem("AIVEN_KAFKA_CERT_PEM", "KAFKA_ACCESS_CERT"),
-        key_pem=_env_pem("AIVEN_KAFKA_KEY_PEM", "KAFKA_ACCESS_KEY"),
+        ca_file=ca_file,
+        cert_file=cert_file,
+        key_file=key_file,
+        ca_pem=ca_pem,
+        cert_pem=cert_pem,
+        key_pem=key_pem,
         sasl_mechanism=_env("AIVEN_KAFKA_SASL_MECHANISM", "KAFKA_SASL_MECHANISM").upper(),
         sasl_username=sasl_username,
         sasl_password=sasl_password,

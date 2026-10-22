@@ -20,6 +20,7 @@ def poll_once(
     print(f"GDACS events received: {len(events)}")
     qualifying = 0
     hits = 0
+    created = 0
 
     for event in events:
         if event["event_type_code"] not in event_types:
@@ -30,6 +31,7 @@ def poll_once(
 
         qualifying += 1
         stored = upsert_external_event(event, mode="LIVE")
+        created += int(bool(stored["created"]))
         exposed = facilities_within_radius(
             latitude=event["latitude"],
             longitude=event["longitude"],
@@ -58,6 +60,8 @@ def poll_once(
             )
 
     print(f"\nQualifying events: {qualifying}; network alerts: {hits}")
+    return {"received_count": len(events), "qualifying_count": qualifying,
+            "created_count": created, "nearby_reports": hits}
 
 
 def main() -> None:

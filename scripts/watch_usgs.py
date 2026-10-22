@@ -16,6 +16,7 @@ def poll_once(*, min_magnitude: float, radius_km: float) -> None:
     print(f"USGS events received: {len(normalized)}")
     magnitude_pass = 0
     hits = 0
+    created = 0
 
     for event in normalized:
         mag = event.get("magnitude")
@@ -25,6 +26,7 @@ def poll_once(*, min_magnitude: float, radius_km: float) -> None:
         # detection separate from triage and prevents a global magnitude cutoff
         # from hiding a smaller event that is very close to a facility.
         stored = upsert_external_event(event, mode="LIVE")
+        created += int(bool(stored["created"]))
         exposed = facilities_within_radius(
             latitude=float(event["latitude"]),
             longitude=float(event["longitude"]),
@@ -66,6 +68,8 @@ def poll_once(*, min_magnitude: float, radius_km: float) -> None:
         f"\nMagnitude threshold passed: {magnitude_pass}; "
         f"network alerts: {hits}"
     )
+    return {"received_count": len(normalized), "created_count": created,
+            "nearby_reports": hits, "display_threshold_reports": magnitude_pass}
 
 
 def main() -> None:

@@ -13,6 +13,7 @@ import time
 
 from dependency.automation.orchestrator import process_pending_events
 from dependency.db.connection import connect
+from dependency.ingest.collector_checks import record_collector_check
 from scripts.watch_usgs import poll_once as poll_usgs_once
 from scripts.watch_gdacs import poll_once as poll_gdacs_once
 from scripts.watch_portwatch import poll_once as poll_portwatch_once
@@ -90,10 +91,35 @@ def run_cycle(
                     "failed": failed,
                 }
             else:
-                results[name] = {"status": "OK"}
+                summary = result if isinstance(result, dict) else {}
+                results[name] = {
+                    "status": "OK",
+                    "received_count": int(summary.get("received_count", 0)),
+                    "created_count": int(summary.get("created_count", 0)),
+                }
+            if name in {"USGS", "GDACS", "PORTWATCH"}:
+                summary = result if isinstance(result, dict) else {}
+                created = (len(summary.get("created_events", []))
+                           if name == "PORTWATCH" else int(summary.get("created_count", 0)))
+                try:
+                    results[name]["check_recorded"] = record_collector_check(
+                        source=name, status="OK",
+                        received_count=int(summary.get("received_count",
+                            summary.get("checked_port_count", 0))),
+                        created_count=created,
+                    )
+                except Exception:
+                    results[name]["check_recorded"] = False
         except Exception as exc:
             # Never log connection URLs or provider credentials.
             results[name] = {"status": "ERROR", "error_type": type(exc).__name__}
+            if name in {"USGS", "GDACS", "PORTWATCH"}:
+                try:
+                    results[name]["check_recorded"] = record_collector_check(
+                        source=name, status="ERROR", error_type=type(exc).__name__,
+                    )
+                except Exception:
+                    results[name]["check_recorded"] = False
     return {
         "status": (
             "OK"

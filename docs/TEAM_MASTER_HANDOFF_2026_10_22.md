@@ -1,6 +1,9 @@
 # HERMES / DEPENDENCY — MASTER TEAM BRIEF
 **22 October 2026 | Share with every teammate before coding**
 
+**NEW FINAL DECISION:** Read [TEAM_FINAL_STRATEGY_AND_JUDGING_2026_10_22.md](TEAM_FINAL_STRATEGY_AND_JUDGING_2026_10_22.md) for the high-bar differentiation, exact judging rubric, proof-of-recoverability demo, owners, measured-evidence requirements and time-critical scope lock. It supersedes generic feature expansion. The public normalized data is in `data/normalized/`; the large populated local database is NOT on GitHub. Use the allowlisted read-only `scripts/export_team_model_snapshot.py` only with authorization, and keep its ZIP private.
+
+
 **Public product:** HERMES. **Repository / Python package:** Dependency.
 **Source of truth:** https://github.com/6aRy10/Disruptors- — branch `feat/db-foundation`.
 **Verified starting point:** commit `87f13717c521c924f067d5152b74c3952b95603e` and passing GitHub workflow https://github.com/6aRy10/Disruptors-/actions/runs/39730743566.

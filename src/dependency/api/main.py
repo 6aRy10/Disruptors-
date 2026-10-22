@@ -70,6 +70,7 @@ from dependency.graph.activity_stream import read_activity
 from dependency.api.readiness import local_readiness
 from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
+from dependency.assistant.mission_controller import mission_preview
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
 
@@ -119,6 +120,12 @@ app.mount(
     StaticFiles(directory=str(WEB_ROOT)),
     name="dashboard-assets",
 )
+
+
+class MissionPreviewQuestion(BaseModel):
+    event_id: str = Field(min_length=1, max_length=180)
+    question: str = Field(min_length=2, max_length=1000)
+    sku: str | None = Field(default=None, max_length=120)
 
 
 class ExpeditorQuestion(BaseModel):
@@ -346,6 +353,20 @@ def health():
         "postgis_version": postgis_version(),
         "state_version": int(version),
     }
+
+
+@app.post("/app-data/mission-preview")
+def mission_preview_read_only(body: MissionPreviewQuestion):
+    """Read-only staged evidence, dependency and backup investigation trace.
+
+    No model call, supplier draft, approval or business state mutation.
+    """
+    try:
+        return mission_preview(
+            event_id=body.event_id, question=body.question, sku=body.sku
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/app-data/ask")

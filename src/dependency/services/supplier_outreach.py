@@ -460,13 +460,37 @@ def record_slack_reply(
             "matched": False,
             "reason": "NO_ACTIVE_CONFIRMATION_REQUEST",
         }
+    # Thread identity is mandatory. A stray user posting into a supplier
+    # channel must never attach evidence to a pending capacity request.
+    if not thread_ts:
+        return {"matched": False, "reason": "THREADED_REPLY_REQUIRED"}
     if len(rows) > 1 and not thread_ts:
         return {
             "matched": False,
             "reason": "AMBIGUOUS_UNTHREADED_REPLY",
         }
 
+    # Slack signs the webhook payload, not the human sender's authority.
+    # For a direct-message request we require the exact authorized Slack user.
+    # For Slack Connect/shared channels require explicit operator-maintained
+    # allowlist; other channel members are NOT implicitly authorized suppliers.
     request_id = rows[0][0]
+    request = get_confirmation_request(request_id)
+    recipient = str(request.get("address") or "").strip()
+    sender = str(sender_external_id or "").strip()
+    if not sender:
+        return {"matched": False, "reason": "MISSING_SUPPLIER_USER_ID"}
+    if recipient.startswith("U"):
+        allowed = sender == recipient
+    else:
+        allowlist = {
+            u.strip() for u in os.getenv(
+                "SLACK_SUPPLIER_ALLOWED_USER_IDS", ""
+            ).split(",") if u.strip()
+        }
+        allowed = sender in allowlist
+    if not allowed:
+        return {"matched": False, "reason": "SENDER_NOT_AUTHORIZED"}
     result = record_confirmation_reply(
         request_id=request_id,
         raw_message=raw_message,

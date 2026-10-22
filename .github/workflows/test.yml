@@ -206,10 +206,20 @@ jobs:
         timeout-minutes: 4
         run: python -m unittest tests.test_live_evidence_to_recovery -v
 
-      - name: Verify source to investigation event journey in disposable PostgreSQL
+      - name: Trace recorded event through investigation evidence
         env:
           HERMES_CI_DISPOSABLE_DB: "1"
-        run: python -m unittest tests.test_event_journey_e2e -v
+        run: python -m unittest tests.test_event_journey_e2e.EventJourneyIntegration.test_unfamiliar_event_records_entire_explainable_lifecycle -v
+
+      - name: Trace non-exposed event without invented incident
+        env:
+          HERMES_CI_DISPOSABLE_DB: "1"
+        run: python -m unittest tests.test_event_journey_e2e.EventJourneyIntegration.test_remote_event_stops_without_invented_incident -v
+
+      - name: Reject unknown event trace
+        env:
+          HERMES_CI_DISPOSABLE_DB: "1"
+        run: python -m unittest tests.test_event_journey_e2e.EventJourneyIntegration.test_unknown_event_is_not_silently_created -v
 
       - name: Test unscripted event creates persisted investigation queue
         run: python -m unittest tests.test_live_investigation_db -v

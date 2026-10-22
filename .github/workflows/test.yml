@@ -79,6 +79,9 @@ jobs:
       - name: Test network graph views
         run: python -m unittest tests.test_network_views -v
 
+      - name: Test safe team data snapshot export
+        run: python -m unittest tests.test_team_model_export -v
+
       - name: Test local readiness and safe DB diagnostic
         run: python -m unittest tests.test_local_readiness -v
 

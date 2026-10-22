@@ -67,6 +67,7 @@ from dependency.graph.dependency_view import product_dependency_graph
 from dependency.graph.network import list_network_facilities, network_stats
 from dependency.graph.app_views import map_facilities, facility_profile, incident_inbox, event_context, map_hazard_reports
 from dependency.graph.activity_stream import read_activity
+from dependency.graph.event_journey import event_journey
 from dependency.assistant.expeditor import answer_expeditor
 from dependency.solver.tariff import tariff_impact
 from dependency.supplier_confirmations import parse_supplier_reply
@@ -368,6 +369,15 @@ def app_event_activity(
         return read_activity(limit=limit,source=source,since=since)
     except ValueError as exc:
         raise HTTPException(status_code=400,detail=str(exc)) from exc
+
+
+@app.get("/app-data/events/{event_id}/journey")
+def app_event_journey(event_id: str):
+    """Trace persisted source-to-investigation checkpoints for one event."""
+    try:
+        return event_journey(event_id=event_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.get("/app-data/events/{event_id}")

@@ -321,6 +321,9 @@ jobs:
       - name: Test measured mission latency summary
         run: python -m unittest tests.test_mission_benchmark -v
 
+      - name: Test Slack sender identity and thread permissions
+        run: python -m unittest tests.test_slack_sender_authorization -v
+
       - name: Test cyclone Slack alerts and grounded Think charts
         run: python -m unittest tests.test_slack_and_think -v
 

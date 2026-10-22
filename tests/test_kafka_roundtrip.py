@@ -21,7 +21,7 @@ class LoopbackProducer:
         if self.fail:
             callback("KafkaError{code=_TRANSPORT}", None)
             return
-        self.consumer.messages.append(FakeMessage(value))
+        self.consumer.messages.append(FakeMessage(value, key=key, partition=1, offset=77))
         callback(None, MagicMock(partition=lambda: 1, offset=lambda: 77))
 
     def flush(self, timeout):
@@ -62,6 +62,8 @@ class RoundtripTests(unittest.TestCase):
         self.assertEqual(len(holder["c"].commits), 1)
         self.assertTrue(holder["c"].closed)
         self.assertEqual(report["offset"], 77)
+        self.assertTrue(report["payload_verified"] and report["key_verified"]
+                        and report["offset_verified"])
 
     def test_delivery_failure_reports_without_consuming(self, _b, _c):
         consumer = FakeConsumer(dict(FAKE_CONFIG))

@@ -86,9 +86,17 @@ def kafka_roundtrip(
                 continue
             if envelope["outbox_id"] == f"PROBE-{run_id}":
                 consumer.commit(message=message, asynchronous=False)
-                report.update(consumed=True, status="VERIFIED",
-                              roundtrip_ms=round((time.monotonic() - started) * 1000),
-                              envelope_topic=envelope["topic"])
+                payload_ok = envelope["payload"].get("run_id") == run_id
+                key_ok = message.key() == f"probe:{run_id}".encode("utf-8")
+                offset_ok = (message.partition(), message.offset()) == (
+                    report["partition"], report["offset"])
+                report.update(
+                    consumed=True,
+                    status="VERIFIED" if (payload_ok and key_ok and offset_ok) else "MISMATCH",
+                    payload_verified=payload_ok, key_verified=key_ok,
+                    offset_verified=offset_ok,
+                    roundtrip_ms=round((time.monotonic() - started) * 1000),
+                    envelope_topic=envelope["topic"])
                 return report
         report["error_type"] = "ConsumeTimeout"
         return report

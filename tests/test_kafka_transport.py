@@ -46,14 +46,24 @@ class FakeProducer:
 
 
 class FakeMessage:
-    def __init__(self, value=None, error=None):
-        self._value, self._error = value, error
+    def __init__(self, value=None, error=None, key=None, partition=0, offset=0):
+        self._value, self._error, self._key = value, error, key
+        self._partition, self._offset = partition, offset
 
     def value(self):
         return self._value
 
     def error(self):
         return self._error
+
+    def key(self):
+        return self._key
+
+    def partition(self):
+        return self._partition
+
+    def offset(self):
+        return self._offset
 
 
 class FakeConsumer:
